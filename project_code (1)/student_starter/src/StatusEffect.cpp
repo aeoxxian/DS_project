@@ -37,15 +37,39 @@ bool StatusTracker::isStunned() const {
     return has(ST_PARALYZE) || has(ST_SLEEP);
 }
 
+void StatusTracker::consume(const std::string& stat, int amount) {
+    for (int i = 0; i < count; ++i) {
+        if (statuses[i].stat == stat) {
+            statuses[i].value -= amount;
+            if (statuses[i].value <= 0) {
+                for (int j = i; j < count - 1; ++j) statuses[j] = statuses[j + 1];
+                --count;
+            }
+            return;
+        }
+    }
+}
+
+void StatusTracker::remove(const std::string& stat) {
+    for (int i = 0; i < count; ++i) {
+        if (statuses[i].stat == stat) {
+            for (int j = i; j < count - 1; ++j) statuses[j] = statuses[j + 1];
+            --count;
+            return;
+        }
+    }
+}
+
 void StatusTracker::removeDebuffs(int n) {
     static const char* debuffs[] = {
-        ST_WEAKEN, ST_ATK_DOWN, ST_MAG_DOWN, ST_DEF_DOWN,
-        ST_MDEF_DOWN, ST_BURN, ST_CONFUSE, ST_PARALYZE, ST_SLEEP
+        ST_POISON, ST_WEAKEN, ST_ATK_DOWN, ST_DEF_DOWN,
+        ST_BURN, ST_CONFUSE, ST_PARALYZE, ST_SLEEP
     };
+    static const int debuffCount = 8;
     int removed = 0;
     for (int attempt = 0; attempt < count * 3 && removed < n; ++attempt) {
         int idx = rand() % count;
-        for (int d = 0; d < 9; ++d) {
+        for (int d = 0; d < debuffCount; ++d) {
             if (statuses[idx].stat == debuffs[d]) {
                 for (int j = idx; j < count - 1; ++j) statuses[j] = statuses[j+1];
                 --count; ++removed; break;

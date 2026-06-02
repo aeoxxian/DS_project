@@ -14,7 +14,8 @@ std::string Enemy::getName() const { return name; }
 int Enemy::getHp() const { return hp; }
 int Enemy::getMaxHp() const { return maxHp; }
 int Enemy::getAttackPower() const {
-    int mod = status.getModifier("atk");
+    // 정식 키 기반: 공격력 버프/디버프를 가/감산. weaken%는 Battle의 데미지 라우팅에서 적용.
+    int mod = status.getModifier(ST_ATK_UP) - status.getModifier(ST_ATK_DOWN);
     return (attackPower + mod < 0) ? 0 : attackPower + mod;
 }
 Track Enemy::getTrack() const { return track; }

@@ -27,25 +27,36 @@ void Run::selectCharacters() {
     }
 }
 
-void Run::buildStartingPool() {
-    // 시작 카드풀: 일반 카드 전부 + 각 캐릭터 트랙 카드 1장씩
+void Run::addRandomCards(bool normalOnly, Track track, int count) {
     CardRegistry& reg = CardRegistry::instance();
+
+    // 1) 조건에 맞는 레지스트리 인덱스를 모은다.
+    int idxs[MAX_REGISTRY_SIZE];
+    int n = 0;
     for (int i = 0; i < reg.size(); ++i) {
         Card c;
         if (!reg.getAt(i, c)) continue;
-
-        if (c.getType() == CardType::Normal) {
-            pool.addCard(c);
-            continue;
-        }
-        // 트랙 카드: 파티 중 해당 트랙 보유자가 있으면 추가
-        for (int p = 0; p < MAX_CHARACTERS; ++p) {
-            if (party[p].hasTrack(c.getTrack())) {
-                pool.addCard(c);
-                break;
-            }
-        }
+        bool match = normalOnly
+            ? (c.getType() == CardType::Normal)
+            : (c.getType() == CardType::TrackCard && c.getTrack() == track);
+        if (match) idxs[n++] = i;
     }
+
+    // 2) 부분 Fisher-Yates로 앞에서 count개를 무작위로 뽑아 풀에 추가 (중복 없이).
+    for (int k = 0; k < count && k < n; ++k) {
+        int j = k + rand() % (n - k);
+        int tmp = idxs[k]; idxs[k] = idxs[j]; idxs[j] = tmp;
+        Card c;
+        if (reg.getAt(idxs[k], c)) pool.addCard(c);
+    }
+}
+
+void Run::buildStartingPool() {
+    // 시작 덱: 공용 카드 5장 + 캐릭터별 트랙 카드 2장씩 (무작위).
+    // 나머지 카드는 전투 보상으로 추가/교체하며 직접 덱을 키워간다.
+    addRandomCards(true, Track::None, 5);
+    for (int p = 0; p < MAX_CHARACTERS; ++p)
+        addRandomCards(false, party[p].getTrack(), 2);
 }
 
 // ── 상태 출력 ─────────────────────────────────────────────────────────────────

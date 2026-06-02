@@ -8,6 +8,7 @@ std::string CardEffect::toString() const {
         case EffectType::Heal:    s = "HEAL(" + std::to_string(value) + ")"; break;
         case EffectType::Buff:    s = "BUFF[" + stat + "+" + std::to_string(value) + "]"; break;
         case EffectType::Debuff:  s = "DEBUFF[" + stat + " " + std::to_string(value) + "]"; break;
+        case EffectType::Draw:    s = "DRAW(" + std::to_string(value) + ")"; break;
     }
     if (duration > 0) s += "x" + std::to_string(duration) + "t";
     return s;

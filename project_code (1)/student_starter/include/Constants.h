@@ -11,7 +11,7 @@ static const int BATTLE_REWARD_COUNT = 3;
 
 // ── Hand / Pool ───────────────────────────────────────────────────────────────
 static const int MAX_HAND_SIZE      = 10;
-static const int MAX_POOL_SIZE      = 64;
+static const int MAX_POOL_SIZE      = 128;  // 공용 30 + 트랙 3종×20 = 90 + 보상 여유분
 
 // ── Card ──────────────────────────────────────────────────────────────────────
 static const int MAX_EFFECTS_PER_CARD = 4;
