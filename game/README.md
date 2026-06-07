@@ -33,25 +33,25 @@ include/
 │   └── StatusEffect.h    상태이상 트래커
 ├── card/
 │   ├── Card.h            카드 클래스
-│   └── CardPool.h        LinkedList 기반 공유 덱 + 손패
+│   └── CardPool.h        LinkedList 기반 공유 덱(CardPool) + 손패(Hand)
 ├── combatant/
 │   ├── Combatant.h       공통 베이스 (HP, 스탯, 상태이상)
 │   ├── CombatantDef.h    스탯 구조체
 │   ├── BattleCharacter.h 아군 캐릭터
 │   └── Enemy.h           적 (Queue<EnemySkill> 의도 관리)
 ├── battle/
-│   ├── Battle.h          전투 루프
+│   ├── Battle.h          전투 루프 (Stack<AssignRecord> 카드 배정 Undo)
 │   └── BattleStats.h     전투 통계
 ├── event/
 │   └── Event.h           이벤트 + 선택지 + 결과
 ├── map/
 │   ├── Room.h            방 (DynamicArray<Item/Enemy>)
-│   ├── RunMap.h          트리형 런 맵
+│   ├── RunMap.h          트리형 런 맵 (Stack<int> 이동 Undo)
 │   └── DungeonGraph.h    4방향 그래프 탐색 (Stack DFS)
 ├── run/
 │   ├── Game.h            런 전체 흐름
 │   ├── Item.h            아이템
-│   └── Inventory.h       인벤토리 ← TODO: LinkedList 구현 필요
+│   └── Inventory.h       인벤토리 (LinkedList<Item>)
 ├── registry/
 │   ├── CardRegistry.h
 │   ├── CharacterRoster.h
@@ -78,9 +78,35 @@ src/
 ├── run/
 ├── registry/             ← 콘텐츠 추가 시 이 디렉터리
 └── ds/
-    ├── ScoreTree.cpp     ← TODO: 헤더의 구현을 여기로 이동 필요
+    ├── ScoreTree.cpp     BST insert / printDescending 구현
     └── Sorting.cpp
 ```
+
+---
+
+## 게임 플로우 및 명령어
+
+### 맵 탐색
+
+| 입력 | 동작 |
+|------|------|
+| Enter | 다음 방으로 진행 |
+| `l` / `look` | 맵 + 파티 현황 재출력 |
+| `i` / `inv` | 인벤토리 확인 |
+| `u` / `undo` | 이전 방으로 되돌리기 (Stack 기반) |
+| `h` / `help` | 명령어 목록 |
+
+### 전투 카드 배정
+
+- 매 턴 손패 5장 드로우, 캐릭터 3명에게 각 1장씩 **필수** 배정 (스킵 불가)
+- 손패가 소진된 경우에만 해당 캐릭터 자동 패스
+
+| 입력 | 동작 |
+|------|------|
+| `0`~`n` | 해당 인덱스 카드를 현재 캐릭터에 배정 |
+| `u` / `undo` | 직전 배정 취소 → 카드 손패 복귀 → 해당 캐릭터로 돌아가기 |
+| `l` / `look` | 전투 상황 + 손패 재출력 |
+| `h` / `help` | 명령어 목록 |
 
 ---
 
@@ -142,14 +168,13 @@ STL 컨테이너(`vector`, `list`, `stack`, `queue`, `map` 등) 사용 금지.
 
 | 자료구조 | 헤더 | 구현 파일 | 게임 내 역할 | 상태 |
 |----------|------|-----------|-------------|------|
-| LinkedList | `ds/LinkedList.h` | 헤더 전용 | CardPool, Hand | ✅ 완료 |
-| Stack | `ds/Stack.h` | 헤더 전용 | DungeonGraph DFS | ✅ 완료 |
-| Queue | `ds/Queue.h` | 헤더 전용 | Enemy 의도 패턴 | ✅ 완료 |
+| LinkedList | `ds/LinkedList.h` | 헤더 전용 | CardPool, Hand, Inventory | ✅ 완료 |
+| Stack | `ds/Stack.h` | 헤더 전용 | RunMap 이동 Undo, Battle 카드 배정 Undo, DungeonGraph DFS | ✅ 완료 |
+| Queue | `ds/Queue.h` | 헤더 전용 | Enemy 의도 패턴 순환 | ✅ 완료 |
 | DynamicArray | `ds/DynamicArray.h` | 헤더 전용 | Room 내 아이템/적 목록 | ✅ 완료 |
-| ScoreTree (BST) | `ds/ScoreTree.h` | `src/ds/ScoreTree.cpp` | 전투 효율 랭킹 | ⚠️ 헤더에만 구현 |
+| ScoreTree (BST) | `ds/ScoreTree.h` | `src/ds/ScoreTree.cpp` | 전투 효율 랭킹 | ✅ 완료 |
 | Graph (DungeonGraph) | `map/DungeonGraph.h` | `src/map/DungeonGraph.cpp` | 던전 방 연결 + DFS 탐색 | ✅ 완료 |
 | Sorting | `ds/Sorting.h` | `src/ds/Sorting.cpp` | 런 종료 전투 통계 정렬 | ✅ 완료 |
-| Inventory (LinkedList) | `run/Inventory.h` | `src/run/Inventory.cpp` | 아이템 보관 | ✅ 완료 |
 
 ---
 
@@ -210,50 +235,17 @@ STL 컨테이너(`vector`, `list`, `stack`, `queue`, `map` 등) 사용 금지.
 
 ---
 
-## TODO — 미구현 항목
+## TODO — 최종 제출 전 체크리스트
 
-루브릭 체크포인트 기준으로 아직 완료되지 않은 항목.
+### 콘텐츠 등록
 
-### 마일스톤 2: 선형 자료구조
-
-- [x] **`src/run/Inventory.cpp` 구현** — LinkedList<Item> 기반, addItem/removeItem/findItem/print 완료
-
-- [x] **이동 Undo Stack 구현** — `RunMap`의 `Stack<int> moveHistory`: advance() 시 이전 방 ID push, `u`/`undo` 명령으로 pop 후 복귀. 빈 스택 엣지케이스 처리 완료
-
-### 마일스톤 3: 게임플레이 통합
-
-- [ ] **`help` 명령** (M3 필수)
-  - 전투 중: 손패 카드 인덱스 입력 방법, Enter=스킵 안내
-  - 맵 이동 중: 분기 선택 방법, 명령어 목록 안내
-
-- [ ] **`look` 명령** (M3 필수)
-  - 현재 방/상황을 다시 출력하는 명령
-  - 전투: `displayBattleState()` 재출력
-  - 맵: `map.printMap()` 재출력
-
-- [ ] **아이템 픽업 게임플레이** (M3 필수: "아이템 픽업 작동")
-  - Room에 아이템이 있을 때 플레이어가 획득 가능하도록 인터페이스 추가
-  - `Room::takeItem()` → `Inventory::addItem()` 연결
-  - `Game::handleRest()` 또는 `handleEvent()`에서 아이템 보상 연동
-
-- [ ] **인벤토리 출력** (M3 필수: "인벤토리 출력 작동")
-  - Inventory 구현 후 게임 내 특정 시점(휴식, 이벤트, 전투 보상)에서 출력
-
-### 마일스톤 4: 고급 자료구조
-
-- [ ] **`src/ds/ScoreTree.cpp`에 구현 이동** (M4 권장)
-  - 현재 `ScoreTree.h`에 insert / printDescending 전체 구현이 있고 `ScoreTree.cpp`는 TODO 주석만 존재
-  - 채점자가 cpp 파일 확인 시 미구현으로 볼 수 있음
-  - insert, printDescending을 cpp로 이동하고 헤더에는 선언만 남기기
-
-- [ ] **복잡도 분석 문서화 확인** — 위 '복잡도 분석' 섹션을 최종 보고서에 포함
-
-### 최종 제출
-
-- [ ] **캐릭터 등록** (`src/registry/CharacterRoster.cpp`) — 현재 TODO 상태, 3명 필수
+- [ ] **캐릭터 이름/스탯 확정** (`src/registry/CharacterRoster.cpp`) — 현재 "캐릭터1/2/3" 플레이스홀더, 팀원별 이름·트랙·스탯으로 교체
 - [ ] **몬스터 등록 검토** (`src/registry/MonsterRegistry.cpp`) — 보스 포함 충분한 수
 - [ ] **이벤트 등록 검토** (`src/registry/EventRegistry.cpp`) — 최소 1개 이상
-- [ ] **최종 보고서 작성** — 자료구조 매핑 테이블, 복잡도 분석, 테스트 및 한계점, 기여도 명세, 회고
+
+### 제출 문서
+
+- [ ] **최종 보고서** — 자료구조 매핑 테이블, 복잡도 분석, 테스트 및 한계점, 기여도 명세, 회고
 - [ ] **팀 기여도 명세** — 각 팀원이 담당한 자료구조 및 기능 명시
 - [ ] **AI/외부 도움 공시** — 사용한 도구 및 범위 명시 (과제 요구사항)
 - [ ] **데모 준비** — 빌드 무개입 실행, 각 자료구조 코드에서 설명, 엣지케이스 시연
@@ -266,8 +258,8 @@ STL 컨테이너(`vector`, `list`, `stack`, `queue`, `map` 등) 사용 금지.
 
 | 항목 | 배점 | 현재 상태 |
 |------|------|-----------|
-| 자료구조 정확성 | 30 | LinkedList·Stack·Queue·DynamicArray·Graph·Sorting 완료. Inventory stub, ScoreTree cpp 비어있음 |
-| 자료구조 통합 | 25 | CardPool·Hand·Enemy intent·DFS·BattleStats 정렬·랭킹 실제 사용. Inventory 미연동 |
-| 완성도 & 안정성 | 20 | 빌드 성공, 입력 검증 있음. help/look/undo/인벤토리/아이템 픽업 모두 구현 완료 |
+| 자료구조 정확성 | 30 | LinkedList·Stack·Queue·DynamicArray·BST·Graph·Sorting 전부 구현 완료 |
+| 자료구조 통합 | 25 | CardPool·Hand·Inventory(LinkedList), moveHistory·assignStack(Stack), Enemy intent(Queue), DFS(Stack), BattleStats 정렬, ScoreTree 랭킹 모두 실제 게임에서 사용 |
+| 완성도 & 안정성 | 20 | 빌드 성공, 입력 검증, help/look/undo(맵·전투), 인벤토리, 아이템 픽업, 카드 필수 배정 모두 구현 |
 | 코드 품질 & 모듈성 | 15 | 서브디렉터리 구조, 명확한 클래스 분리. 양호 |
-| 창의적 확장 & 발표 | 10 | 트랙 시스템, 카드 배틀 구조가 독창적. 발표 준비 필요 |
+| 창의적 확장 & 발표 | 10 | 트랙 시스템, 카드 배틀 구조 독창적. 발표 준비 필요 |
