@@ -11,14 +11,13 @@ class Combatant {
 protected:
     std::string name;
     int HP, maxHP;
-    int attackPower, defend, magicPower;
+    int attackPower, defend;
     Track track;
     StatusTracker status;
 
 public:
     Combatant();
-    Combatant(const std::string& name, int maxHP, int atk,
-              int def, int mgc, Track track);
+    Combatant(const std::string& name, int maxHP, int atk, int def, Track track);
     explicit Combatant(const CombatantDef& def);
 
     std::string getName()        const;
@@ -26,7 +25,6 @@ public:
     int  getMaxHP()              const;
     int  getAttackPower()        const;
     int  getDefend()             const;
-    int  getMagicPower()         const;
     Track getTrack()             const;
     bool  hasTrack(Track t)      const;
     bool  isAlive()              const;

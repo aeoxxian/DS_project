@@ -11,8 +11,8 @@ struct CharacterDef : public CombatantDef {
 
     CharacterDef() : CombatantDef(), id(0) {}
     CharacterDef(int id, const std::string& name, const std::string& desc,
-                 int hp, int atk, int def, int mgc, Track track)
-        : CombatantDef(name, hp, atk, def, mgc, track),
+                 int hp, int atk, int def, Track track)
+        : CombatantDef(name, hp, atk, def, track),
           id(id), description(desc) {}
 };
 

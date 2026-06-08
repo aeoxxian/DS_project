@@ -36,63 +36,61 @@ bool Battle::checkBattleEnd() {
     return false;
 }
 
+// ── 공격 헬퍼 ─────────────────────────────────────────────────────────────────
+
+int Battle::frontPartyIndex() const {
+    for (int i = 0; i < partySize; ++i)
+        if (party[i]->isAlive()) return i;
+    return -1;
+}
+
+int Battle::calcRaw(const Effect& e, Combatant& src) const {
+    int raw    = e.value + src.getAttackPower();
+    int weaken = src.getStatus().getModifier("weaken");
+    if (weaken > 0) raw = raw * (100 - weaken) / 100;
+    return raw;
+}
+
+void Battle::dealToEnemy(int ei, int raw, EffectType t) {
+    if (ei < 0 || ei >= enemyCount || !enemies[ei].isAlive()) return;
+    int actual = enemies[ei].receiveDamage(raw, t);
+    totalDamageDealt += actual;
+    std::cout << "    -> " << enemies[ei].getName() << " -" << actual << " HP\n";
+}
+
+void Battle::dealToAllEnemies(int raw, EffectType t) {
+    for (int ei = 0; ei < enemyCount; ++ei) dealToEnemy(ei, raw, t);
+}
+
+void Battle::dealToParty(int raw, EffectType t) {
+    int fi = frontPartyIndex();
+    if (fi < 0) return;
+    int actual = party[fi]->receiveDamage(raw, t);
+    totalDamageTaken += actual;
+    std::cout << "    -> " << party[fi]->getName() << " -" << actual << " HP\n";
+}
+
+// ── applyEffect ───────────────────────────────────────────────────────────────
+
 void Battle::applyEffect(const Effect& e, Combatant& source, int targetIdx, bool sourceIsPlayer) {
     switch (e.type) {
-        case EffectType::HandScaleAttack: {
-            int hits = hand.size();
-            std::cout << "    (손패 " << hits << "장 → " << hits << "회 공격)\n";
-            for (int h = 0; h < hits; ++h) {
-                int raw = e.value + source.getMagicPower();
-                int weaken = source.getStatus().getModifier("weaken");
-                if (weaken > 0) raw = raw * (100 - weaken) / 100;
-                if (sourceIsPlayer) {
-                    int targetIdx = firstLivingEnemy();
-                    if (targetIdx >= 0 && enemies[targetIdx].isAlive()) {
-                        int actual = enemies[targetIdx].receiveDamage(raw, EffectType::MagicAttack);
-                        totalDamageDealt += actual;
-                        std::cout << "    [" << (h+1) << "] -> " << enemies[targetIdx].getName()
-                                  << " -" << actual << " HP\n";
-                    }
-                } else {
-                    for (int ci = 0; ci < partySize; ++ci) {
-                        if (!party[ci]->isAlive()) continue;
-                        int actual = party[ci]->receiveDamage(raw, EffectType::MagicAttack);
-                        totalDamageTaken += actual;
-                        std::cout << "    [" << (h+1) << "] -> " << party[ci]->getName()
-                                  << " -" << actual << " HP\n";
-                    }
-                }
+        case EffectType::Attack: {
+            int raw = calcRaw(e, source);
+            if (sourceIsPlayer) {
+                if (e.target == EffectTarget::AllEnemies) dealToAllEnemies(raw, e.type);
+                else                                      dealToEnemy(targetIdx, raw, e.type);
+            } else {
+                dealToParty(raw, e.type);
             }
             break;
         }
-        case EffectType::PhysAttack:
-        case EffectType::MagicAttack: {
-            int raw = e.value + (e.type == EffectType::PhysAttack
-                      ? source.getAttackPower() : source.getMagicPower());
-            int weaken = source.getStatus().getModifier("weaken");
-            if (weaken > 0) raw = raw * (100 - weaken) / 100;
-
-            bool allEnemies = (e.target == EffectTarget::AllEnemies);
-            if (sourceIsPlayer) {
-                if (allEnemies) {
-                    for (int ei = 0; ei < enemyCount; ++ei) {
-                        if (!enemies[ei].isAlive()) continue;
-                        int actual = enemies[ei].receiveDamage(raw, e.type);
-                        totalDamageDealt += actual;
-                        std::cout << "    -> " << enemies[ei].getName() << " -" << actual << " HP\n";
-                    }
-                } else if (targetIdx >= 0 && enemies[targetIdx].isAlive()) {
-                    int actual = enemies[targetIdx].receiveDamage(raw, e.type);
-                    totalDamageDealt += actual;
-                    std::cout << "    -> " << enemies[targetIdx].getName() << " -" << actual << " HP\n";
-                }
-            } else {
-                for (int ci = 0; ci < partySize; ++ci) {
-                    if (!party[ci]->isAlive()) continue;
-                    int actual = party[ci]->receiveDamage(raw, e.type);
-                    totalDamageTaken += actual;
-                    std::cout << "    -> " << party[ci]->getName() << " -" << actual << " HP\n";
-                }
+        case EffectType::HandScaleAttack: {
+            int raw  = calcRaw(e, source);
+            int hits = hand.size();
+            std::cout << "    (손패 " << hits << "장 → " << hits << "회 공격)\n";
+            for (int h = 0; h < hits; ++h) {
+                if (sourceIsPlayer) dealToEnemy(firstLivingEnemy(), raw, e.type);
+                else                dealToParty(raw, e.type);
             }
             break;
         }
@@ -135,9 +133,8 @@ void Battle::applyEffect(const Effect& e, Combatant& source, int targetIdx, bool
             break;
         }
         case EffectType::Debuff: {
-            bool allEnemies = (e.target == EffectTarget::AllEnemies);
             if (sourceIsPlayer) {
-                if (allEnemies) {
+                if (e.target == EffectTarget::AllEnemies) {
                     for (int ei = 0; ei < enemyCount; ++ei) {
                         if (!enemies[ei].isAlive()) continue;
                         enemies[ei].getStatus().apply(e.stat, e.value, e.duration);
@@ -163,6 +160,34 @@ void Battle::applyEffect(const Effect& e, Combatant& source, int targetIdx, bool
             pendingDrawBonus += e.value;
             std::cout << "    -> 다음 턴 +" << e.value << "장 드로우\n";
             break;
+        case EffectType::Swap: {
+            if (sourceIsPlayer) {
+                std::cout << "    자리 바꾸기 (예: 0 1) > ";
+                std::string line;
+                std::getline(std::cin, line);
+                int a = -1, b = -1;
+                if (line.size() >= 3 && line[0] >= '0' && line[2] >= '0') {
+                    a = line[0] - '0';
+                    b = line[2] - '0';
+                }
+                if (a >= 0 && a < partySize && b >= 0 && b < partySize && a != b) {
+                    std::swap(party[a], party[b]);
+                    std::cout << "    -> " << party[a]->getName()
+                              << " ↔ " << party[b]->getName() << " 자리 교환\n";
+                } else {
+                    std::cout << "    -> 잘못된 입력, 스킵\n";
+                }
+            } else {
+                if (partySize >= 2) {
+                    int a = rand() % partySize;
+                    int b; do { b = rand() % partySize; } while (b == a);
+                    std::swap(party[a], party[b]);
+                    std::cout << "    -> 강제 자리 바꾸기! "
+                              << party[a]->getName() << " ↔ " << party[b]->getName() << "\n";
+                }
+            }
+            break;
+        }
     }
 }
 
@@ -187,21 +212,21 @@ void Battle::displayBattleState() const {
 
     // ── 파티 ────────────────────────────────────────────────────────────────
     std::cout << "\n  [ 파티 ]\n";
+    int front = frontPartyIndex();
     for (int i = 0; i < partySize; ++i) {
         if (!party[i]->isAlive()) {
-            std::cout << "  [" << i << "] " << party[i]->getName() << "  -- 사망\n";
+            std::cout << "  [" << i << "]    " << party[i]->getName() << "  -- 사망\n";
             continue;
         }
         const Combatant& c = *party[i];
-        std::cout << "  [" << i << "] "
-                  << std::left << std::setw(12) << c.getName()
+        std::cout << "  [" << i << "] " << (i == front ? "★전열" : "  후열")
+                  << " " << std::left << std::setw(12) << c.getName()
                   << " [" << std::setw(10) << trackToString(c.getTrack()) << "]"
                   << "  HP " << std::right << std::setw(3) << c.getHP()
                   << "/" << std::setw(3) << c.getMaxHP()
                   << " " << UI::hpBar(c.getHP(), c.getMaxHP())
                   << "  ATK:" << std::setw(2) << c.getAttackPower()
                   << " DEF:" << std::setw(2) << c.getDefend()
-                  << " MGC:" << std::setw(2) << c.getMagicPower()
                   << c.getStatus().toString()
                   << "\n";
     }
@@ -367,20 +392,8 @@ void Battle::executePhase() {
         if (!enemies[ei].executeAndQueue(sk)) continue;
         const Card& card = sk.card;
         std::cout << "  " << enemies[ei].getName() << " → [" << card.getName() << "]\n";
-        for (int ef = 0; ef < card.getEffectCount(); ++ef) {
-            if (card.getTargetScope() == TargetScope::All) {
-                for (int ci = 0; ci < partySize; ++ci)
-                    if (party[ci]->isAlive())
-                        applyEffect(card.getEffect(ef), enemies[ei], ci, false);
-            } else {
-                for (int ci = 0; ci < partySize; ++ci) {
-                    if (party[ci]->isAlive()) {
-                        applyEffect(card.getEffect(ef), enemies[ei], ci, false);
-                        break;
-                    }
-                }
-            }
-        }
+        for (int ef = 0; ef < card.getEffectCount(); ++ef)
+            applyEffect(card.getEffect(ef), enemies[ei], -1, false);
     }
 }
 

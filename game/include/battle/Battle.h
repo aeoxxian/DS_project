@@ -38,6 +38,13 @@ private:
 
     void applyEffect(const Effect& e, Combatant& source, int targetIdx, bool sourceIsPlayer);
 
+    // 공격 헬퍼
+    int  frontPartyIndex()                          const;
+    int  calcRaw(const Effect& e, Combatant& src)   const;
+    void dealToEnemy(int ei, int raw, EffectType t);
+    void dealToAllEnemies(int raw, EffectType t);
+    void dealToParty(int raw, EffectType t);
+
     bool checkBattleEnd();
     int  firstLivingEnemy() const;
     int  livingPartyCount() const;

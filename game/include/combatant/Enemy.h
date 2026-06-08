@@ -16,8 +16,7 @@ private:
 
 public:
     Enemy();
-    Enemy(const std::string& name, int maxHP, int atk,
-          int def, int mgc, Track track);
+    Enemy(const std::string& name, int maxHP, int atk, int def, Track track);
     Enemy(const EnemyDef& def);
 
     void prepareIntent();

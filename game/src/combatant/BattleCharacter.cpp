@@ -4,8 +4,8 @@
 BattleCharacter::BattleCharacter() : Combatant(), hasAssignedCard(false) {}
 
 BattleCharacter::BattleCharacter(const std::string& name, int maxHP, int atk,
-                                  int def, int mgc, Track track)
-    : Combatant(name, maxHP, atk, def, mgc, track), hasAssignedCard(false) {}
+                                  int def, Track track)
+    : Combatant(name, maxHP, atk, def, track), hasAssignedCard(false) {}
 
 BattleCharacter::BattleCharacter(const CharacterDef& def)
     : Combatant(def), hasAssignedCard(false) {}

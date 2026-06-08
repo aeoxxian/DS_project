@@ -12,8 +12,7 @@ private:
 
 public:
     BattleCharacter();
-    BattleCharacter(const std::string& name, int maxHP, int atk,
-                    int def, int mgc, Track track);
+    BattleCharacter(const std::string& name, int maxHP, int atk, int def, Track track);
     BattleCharacter(const CharacterDef& def);
 
     void        assignCard(const Card& card);

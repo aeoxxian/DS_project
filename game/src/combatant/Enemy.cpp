@@ -5,10 +5,10 @@
 Enemy::Enemy() : Combatant(), skillCount(0), patternIndex(0) {}
 
 Enemy::Enemy(const std::string& name, int maxHP, int atk,
-             int def, int mgc, Track track)
-    : Combatant(name, maxHP, atk, def, mgc, track), skillCount(0), patternIndex(0) {
+             int def, Track track)
+    : Combatant(name, maxHP, atk, def, track), skillCount(0), patternIndex(0) {
     Card defaultAtk(0, "공격", "기본 공격", Track::None, TargetScope::Single);
-    defaultAtk.addEffect(Effect(EffectType::PhysAttack, atk));
+    defaultAtk.addEffect(Effect(EffectType::Attack, atk));
     skills[skillCount++] = EnemySkill(defaultAtk);
 }
 
@@ -17,7 +17,7 @@ Enemy::Enemy(const EnemyDef& def)
     for (int i = 0; i < def.skillCount; ++i) skills[i] = def.skills[i];
     if (skillCount == 0) {
         Card defaultAtk(0, "공격", "기본 공격", Track::None, TargetScope::Single);
-        defaultAtk.addEffect(Effect(EffectType::PhysAttack, def.baseAttack));
+        defaultAtk.addEffect(Effect(EffectType::Attack, def.baseAttack));
         skills[skillCount++] = EnemySkill(defaultAtk);
     }
 }

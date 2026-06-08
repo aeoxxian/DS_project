@@ -58,69 +58,69 @@ void registerAllMonsters() {
     MonsterRegistry& reg = MonsterRegistry::instance();
 
     // ── Nuclear ───────────────────────────────────────────────────────────────
-    {   EnemyDef def("Fission Hound", 60, 8, 4, 6, Track::Nuclear);
+    {   EnemyDef def("Fission Hound", 60, 8, 4, Track::Nuclear);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
-    {   EnemyDef def("Reactor Wraith", 100, 12, 6, 10, Track::Nuclear);
+    {   EnemyDef def("Reactor Wraith", 100, 12, 6, Track::Nuclear);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
     // ── NewMaterial ───────────────────────────────────────────────────────────
-    {   EnemyDef def("Nano Swarm", 50, 7, 5, 5, Track::NewMaterial);
+    {   EnemyDef def("Nano Swarm", 50, 7, 5, Track::NewMaterial);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
-    {   EnemyDef def("Carbon Golem", 120, 10, 14, 4, Track::NewMaterial);
+    {   EnemyDef def("Carbon Golem", 120, 10, 14, Track::NewMaterial);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
     // ── Hydrogen ──────────────────────────────────────────────────────────────
-    {   EnemyDef def("Cryo Crawler", 55, 9, 5, 7, Track::Hydrogen);
+    {   EnemyDef def("Cryo Crawler", 55, 9, 5, Track::Hydrogen);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
-    {   EnemyDef def("Plasma Leech", 80, 11, 6, 10, Track::Hydrogen);
+    {   EnemyDef def("Plasma Leech", 80, 11, 6, Track::Hydrogen);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
     // ── EcoTech ───────────────────────────────────────────────────────────────
-    {   EnemyDef def("Gust Wraith", 45, 8, 4, 6, Track::EcoTech);
+    {   EnemyDef def("Gust Wraith", 45, 8, 4, Track::EcoTech);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
-    {   EnemyDef def("Turbine Beast", 90, 13, 8, 6, Track::EcoTech);
+    {   EnemyDef def("Turbine Beast", 90, 13, 8, Track::EcoTech);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
     // ── AI ────────────────────────────────────────────────────────────────────
-    {   EnemyDef def("Rogue Drone", 55, 9, 5, 10, Track::AI);
+    {   EnemyDef def("Rogue Drone", 55, 9, 5, Track::AI);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
-    {   EnemyDef def("Neural Phantom", 95, 11, 6, 14, Track::AI);
+    {   EnemyDef def("Neural Phantom", 95, 11, 6, Track::AI);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
     // ── Grid ──────────────────────────────────────────────────────────────────
-    {   EnemyDef def("Static Fiend", 65, 8, 6, 8, Track::Grid);
+    {   EnemyDef def("Static Fiend", 65, 8, 6, Track::Grid);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
-    {   EnemyDef def("Overload Titan", 130, 14, 10, 8, Track::Grid);
+    {   EnemyDef def("Overload Titan", 130, 14, 10, Track::Grid);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
     // ── 보스 (isBoss = true) ──────────────────────────────────────────────────
-    {   EnemyDef def("NEXUS Core",     300, 20, 15, 18, Track::AI,      true);
+    {   EnemyDef def("NEXUS Core",     300, 20, 15, Track::AI,      true);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
-    {   EnemyDef def("Meltdown Titan", 280, 22, 12, 14, Track::Nuclear, true);
+    {   EnemyDef def("Meltdown Titan", 280, 22, 12, Track::Nuclear, true);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 
-    {   EnemyDef def("Storm Colossus", 260, 18, 14, 16, Track::EcoTech, true);
+    {   EnemyDef def("Storm Colossus", 260, 18, 14, Track::EcoTech, true);
         // TODO: 스킬 추가
         reg.registerMonster(def); }
 }

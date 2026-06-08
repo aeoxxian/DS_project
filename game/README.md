@@ -100,6 +100,7 @@ src/
 
 - 매 턴 손패 5장 드로우, 캐릭터 3명에게 각 1장씩 **필수** 배정 (스킵 불가)
 - 손패가 소진된 경우에만 해당 캐릭터 자동 패스
+- `★전열` 캐릭터만 적의 공격을 받음 — `자리 바꾸기` 카드로 포지션 교체 가능
 
 | 입력 | 동작 |
 |------|------|
@@ -108,6 +109,8 @@ src/
 | `l` / `look` | 전투 상황 + 손패 재출력 |
 | `h` / `help` | 명령어 목록 |
 
+> `자리 바꾸기` 카드 사용 시 "0 1" 형식으로 교체할 두 캐릭터 인덱스를 입력합니다.
+
 ---
 
 ## 콘텐츠 추가 방법
@@ -115,37 +118,59 @@ src/
 ### 카드 추가 (`src/registry/CardRegistry.cpp`)
 
 ```cpp
+using namespace Effects;
+
 // 공용 카드 — Track::None, 보너스 이펙트 없음
-Card c(id, "이름", "설명", Track::None, TargetScope::Single);
-c.addEffect(Effect(EffectType::PhysAttack, 5));
+Card c(id, "이름", "설명");
+c.addEffect(attack(5));
 reg.registerCard(c);
 
 // 트랙 카드 — 해당 트랙 지정, 트랙 일치 시 bonusEffect 추가 발동
-Card c(id, "이름", "설명", Track::Grid, TargetScope::Single);
-c.addEffect(Effect(EffectType::MagicAttack, 8));
-c.addBonusEffect(Effect(EffectType::Debuff, 3, 2, ST_ATK_DOWN));
+Card c(id, "이름", "설명", Track::Grid);
+c.addEffect(attack(8));
+c.addBonusEffect(atkDown(3, 2));
+reg.registerCard(c);
+
+// 자리 바꾸기 카드 — Swap 이펙트 사용
+Card c(id, "이름", "설명");
+c.addEffect(swap());
 reg.registerCard(c);
 ```
+
+**이펙트 팩토리 함수 (Effect.h `namespace Effects`)**
+
+| 팩토리 | 설명 |
+|--------|------|
+| `attack(v)` / `attack(v, AllEnemies)` | 공격 (ATK 스케일) |
+| `handScaleAttack(v)` | 손패 수만큼 공격 반복 |
+| `defense(v, d)` | 방어막 d턴 |
+| `heal(v)` / `heal(v, Party)` | 회복 |
+| `draw(v)` | 다음 턴 드로우 +v |
+| `swap()` | 자리 바꾸기 |
+| `atkUp/defUp(v, d)` | 버프 |
+| `atkDown/defDown(v, d)` | 디버프 |
+| `poison/stun/weaken/confuse(d)` | 상태이상 |
 
 ### 캐릭터 추가 (`src/registry/CharacterRoster.cpp`)
 
 ```cpp
-// CharacterDef(id, 이름, 설명, HP, ATK, DEF, MGC, Track)
-r.registerCharacter(CharacterDef(1, "이름", "설명", 100, 10, 8, 8, Track::AI));
+// CharacterDef(id, 이름, 설명, HP, ATK, DEF, Track)
+r.registerCharacter(CharacterDef(1, "이름", "설명", 100, 10, 8, Track::AI));
 ```
 
 ### 몬스터 추가 (`src/registry/MonsterRegistry.cpp`)
 
 ```cpp
-// EnemyDef(이름, HP, ATK, DEF, MGC, Track, isBoss=false)
-EnemyDef def("이름", 80, 12, 5, 0, Track::Hydrogen);
+// EnemyDef(이름, HP, ATK, DEF, Track, isBoss=false)
+EnemyDef def("이름", 80, 12, 5, Track::Hydrogen);
 
 Card skill1(0, "단일 공격", "물리 타격", Track::None, TargetScope::Single);
-skill1.addEffect(Effect(EffectType::PhysAttack, 10));
+skill1.addEffect(Effect(EffectType::Attack, 10));
 def.addSkill(skill1);
 
-Card skill2(0, "독 분사", "전체 독", Track::None, TargetScope::All);
-skill2.addEffect(Effect(EffectType::Debuff, 3, 2, ST_POISON, EffectTarget::AllEnemies));
+// 강제 자리 바꾸기 스킬 예시
+Card skill2(0, "강제 교대", "전열 혼란", Track::None, TargetScope::Single);
+skill2.addEffect(Effect(EffectType::Swap, 0));
 def.addSkill(skill2);
 
 reg.registerMonster(def);  // 패턴: skill1 → skill2 → skill1 → ...

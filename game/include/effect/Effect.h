@@ -4,13 +4,13 @@
 #include <string>
 
 enum class EffectType {
-    PhysAttack,      // value + ATK - 대상 DEF
-    MagicAttack,     // value + MGC - 대상 DEF
-    HandScaleAttack, // value * 현재 손패 수 (마법 데미지, DEF 적용)
+    Attack,          // value + ATK - 대상 DEF
+    HandScaleAttack, // 손패 수만큼 Attack 반복 (ATK 스케일)
     Defense,         // 방어막 (value, duration턴)
     Buff,            // 아군 강화 / 회복 (stat 키로 구분)
     Debuff,          // 적 상태이상
-    Draw             // 다음 턴 드로우 +value장
+    Draw,            // 다음 턴 드로우 +value장
+    Swap             // 자리 바꾸기 (플레이어: 선택, 적: 강제 랜덤)
 };
 
 enum class EffectTarget {
@@ -26,7 +26,7 @@ struct Effect {
     std::string  stat;
     EffectTarget target;
 
-    Effect() : type(EffectType::PhysAttack), value(0), duration(0), target(EffectTarget::Default) {}
+    Effect() : type(EffectType::Attack), value(0), duration(0), target(EffectTarget::Default) {}
     Effect(EffectType t, int v, int d = 0,
            const std::string& s = "", EffectTarget tgt = EffectTarget::Default)
         : type(t), value(v), duration(d), stat(s), target(tgt) {}
@@ -49,22 +49,21 @@ static const char* ST_BLOCK    = "block";
 
 // ── 팩토리 ────────────────────────────────────────────────────────────────────
 namespace Effects {
-    inline Effect physAttack (int v, EffectTarget t = EffectTarget::Default)
-        { return Effect(EffectType::PhysAttack,  v, 0, "", t); }
-    inline Effect magicAttack(int v, EffectTarget t = EffectTarget::Default)
-        { return Effect(EffectType::MagicAttack, v, 0, "", t); }
-    inline Effect handScaleAttack(int v, EffectTarget t = EffectTarget::Default)
-        { return Effect(EffectType::HandScaleAttack, v, 0, "", t); }
+    inline Effect attack     (int v, EffectTarget t = EffectTarget::Default)
+        { return Effect(EffectType::Attack,      v, 0, "", t); }
+    inline Effect handScaleAttack(int v)
+        { return Effect(EffectType::HandScaleAttack, v); }
     inline Effect defense    (int v, int d = 1, EffectTarget t = EffectTarget::Default)
         { return Effect(EffectType::Defense,     v, d, "", t); }
     inline Effect heal       (int v, EffectTarget t = EffectTarget::Default)
         { return Effect(EffectType::Buff,        v, 0, "heal", t); }
     inline Effect draw       (int v)
         { return Effect(EffectType::Draw,        v); }
+    inline Effect swap       ()
+        { return Effect(EffectType::Swap,        0); }
 
     inline Effect atkUp      (int v, int d) { return Effect(EffectType::Buff,   v, d, ST_ATK_UP); }
     inline Effect defUp      (int v, int d) { return Effect(EffectType::Buff,   v, d, ST_DEF_UP); }
-    inline Effect mgcUp      (int v, int d) { return Effect(EffectType::Buff,   v, d, "mag_up"); }
     inline Effect evade      (int d)        { return Effect(EffectType::Buff,  50, d, ST_EVADE); }
     inline Effect block      (int d)        { return Effect(EffectType::Buff,   1, d, ST_BLOCK); }
 

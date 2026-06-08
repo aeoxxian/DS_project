@@ -18,8 +18,8 @@ struct EnemyDef : public CombatantDef {
 
     EnemyDef() : CombatantDef(), isBoss(false), skillCount(0) {}
     EnemyDef(const std::string& name, int hp, int atk, int def,
-             int mgc, Track track, bool isBoss = false)
-        : CombatantDef(name, hp, atk, def, mgc, track),
+             Track track, bool isBoss = false)
+        : CombatantDef(name, hp, atk, def, track),
           isBoss(isBoss), skillCount(0) {}
 
     bool addSkill(const Card& c) {

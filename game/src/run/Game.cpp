@@ -26,8 +26,8 @@ void Game::selectParty() {
     if (roster.size() == 0) {
         std::cout << "  (등록된 캐릭터 없음 — CharacterRoster.cpp에 추가하세요)\n";
     } else {
-        std::cout << "  번호  이름                트랙           HP   ATK  DEF  MGC\n";
-        std::cout << "  ─────────────────────────────────────────────────────────────\n";
+        std::cout << "  번호  이름                트랙           HP   ATK  DEF\n";
+        std::cout << "  ─────────────────────────────────────────────────────\n";
         for (int i = 0; i < roster.size(); ++i) {
             CharacterDef def;
             roster.getAt(i, def);
@@ -37,8 +37,7 @@ void Game::selectParty() {
                       << std::right
                       << std::setw(4) << def.baseHP
                       << std::setw(5) << def.baseAttack
-                      << std::setw(5) << def.baseDefend
-                      << std::setw(5) << def.baseMagicPower << "\n";
+                      << std::setw(5) << def.baseDefend << "\n";
         }
         std::cout << "\n";
     }
@@ -188,7 +187,6 @@ static void printPartyStatus(BattleCharacter party[], int count) {
                   << " " << UI::hpBar(party[i].getHP(), party[i].getMaxHP())
                   << "  ATK:" << party[i].getAttackPower()
                   << " DEF:" << party[i].getDefend()
-                  << " MGC:" << party[i].getMagicPower()
                   << party[i].getStatus().toString()
                   << "\n";
     }
