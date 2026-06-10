@@ -2,6 +2,7 @@
 #define DYNAMIC_ARRAY_H
 
 #include <iostream>
+#include <cstdlib>
 
 template <typename T>
 class DynamicArray {
@@ -47,8 +48,20 @@ public:
         return true;
     }
 
-    T& operator[](int index) { return data[index]; }
-    const T& operator[](int index) const { return data[index]; }
+    T& operator[](int index) {
+        if (index < 0 || index >= sz) {
+            std::cerr << "[DynamicArray] index " << index << " out of range (size=" << sz << ")\n";
+            std::exit(1);
+        }
+        return data[index];
+    }
+    const T& operator[](int index) const {
+        if (index < 0 || index >= sz) {
+            std::cerr << "[DynamicArray] index " << index << " out of range (size=" << sz << ")\n";
+            std::exit(1);
+        }
+        return data[index];
+    }
 
     void clear() { sz = 0; }
 };

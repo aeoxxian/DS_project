@@ -25,6 +25,7 @@ private:
     BattleStats battleLog[MAX_MAP_NODES];
     int         battleLogCount;
     ScoreTree   scoreTree;
+    int         charTotalDamage[MAX_CHARACTERS];
 
     void selectParty();
     void buildPool();

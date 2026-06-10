@@ -1,4 +1,5 @@
 #include "battle/Battle.h"
+#include "run/Item.h"
 #include "registry/CardRegistry.h"
 #include "core/UI.h"
 #include <iostream>
@@ -6,11 +7,13 @@
 #include <iomanip>
 #include <cstdlib>
 
-Battle::Battle(BattleCharacter partyArr[], int size, CardPool& sharedPool)
-    : partySize(size), enemyCount(0), pool(sharedPool),
+Battle::Battle(BattleCharacter partyArr[], int size, CardPool& sharedPool, Inventory* inventory)
+    : partySize(size), enemyCount(0), pool(sharedPool), inv(inventory),
       turnNumber(0), battleOver(false), playerWon(false),
-      totalDamageDealt(0), totalDamageTaken(0), pendingDrawBonus(0) {
+      totalDamageDealt(0), totalDamageTaken(0), pendingDrawBonus(0),
+      currentActorIdx(-1) {
     for (int i = 0; i < partySize; ++i) party[i] = &partyArr[i];
+    for (int i = 0; i < MAX_CHARACTERS; ++i) charDamageDealt[i] = 0;
 }
 
 void Battle::addEnemy(const Enemy& enemy) {
@@ -55,6 +58,8 @@ void Battle::dealToEnemy(int ei, int raw, EffectType t) {
     if (ei < 0 || ei >= enemyCount || !enemies[ei].isAlive()) return;
     int actual = enemies[ei].receiveDamage(raw, t);
     totalDamageDealt += actual;
+    if (currentActorIdx >= 0 && currentActorIdx < partySize)
+        charDamageDealt[currentActorIdx] += actual;
     std::cout << "    -> " << enemies[ei].getName() << " -" << actual << " HP\n";
 }
 
@@ -344,6 +349,7 @@ void Battle::assignPhase() {
         if (line == "h" || line == "help") {
             std::cout << "  카드 번호 입력 → 해당 캐릭터에 배정 (필수)\n";
             std::cout << "  switch         → 자리 바꾸기 (카드 대신, 이 캐릭터 행동 소비)\n";
+            std::cout << "  use            → 인벤토리 아이템 사용 (포션 등)\n";
             std::cout << "  l / look       → 전투 상황 + 손패 다시 보기\n";
             std::cout << "  u / undo       → 직전 배정 취소 후 해당 캐릭터로 돌아가기\n";
             continue;
@@ -368,6 +374,79 @@ void Battle::assignPhase() {
                 ci = rec.ci;
             } else {
                 std::cout << "  더 이상 되돌릴 수 없습니다.\n";
+            }
+            continue;
+        }
+
+        if (line == "use") {
+            if (!inv || inv->isEmpty()) {
+                std::cout << "  사용할 아이템이 없습니다.\n";
+                continue;
+            }
+            inv->print();
+            std::cout << "  사용할 아이템 번호 > ";
+            std::getline(std::cin, line);
+            int itemIdx = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : -1;
+            Item it;
+            if (!inv->takeAt(itemIdx, it)) {
+                std::cout << "  잘못된 번호.\n";
+                continue;
+            }
+            switch (it.getType()) {
+                case PotionType::Heal: {
+                    std::cout << "  사용 대상 캐릭터 번호 > ";
+                    std::getline(std::cin, line);
+                    int ti = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : frontPartyIndex();
+                    if (ti < 0 || ti >= partySize || !party[ti]->isAlive()) ti = frontPartyIndex();
+                    if (ti >= 0) {
+                        party[ti]->heal(it.getValue());
+                        std::cout << "  " << party[ti]->getName() << " HP +" << it.getValue() << "\n";
+                    }
+                    break;
+                }
+                case PotionType::AtkUp: {
+                    std::cout << "  사용 대상 캐릭터 번호 > ";
+                    std::getline(std::cin, line);
+                    int ti = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : frontPartyIndex();
+                    if (ti < 0 || ti >= partySize || !party[ti]->isAlive()) ti = frontPartyIndex();
+                    if (ti >= 0) {
+                        party[ti]->getStatus().apply("atk_up", it.getValue(), 3);
+                        std::cout << "  " << party[ti]->getName() << " ATK +" << it.getValue() << " (3턴)\n";
+                    }
+                    break;
+                }
+                case PotionType::Shield: {
+                    std::cout << "  사용 대상 캐릭터 번호 > ";
+                    std::getline(std::cin, line);
+                    int ti = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : frontPartyIndex();
+                    if (ti < 0 || ti >= partySize || !party[ti]->isAlive()) ti = frontPartyIndex();
+                    if (ti >= 0) {
+                        party[ti]->getStatus().apply("shield", it.getValue(), 2);
+                        std::cout << "  " << party[ti]->getName() << " 방어막 +" << it.getValue() << " (2턴)\n";
+                    }
+                    break;
+                }
+                case PotionType::Poison: {
+                    std::cout << "  독을 부여할 적 번호 > ";
+                    std::getline(std::cin, line);
+                    int ei = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : firstLivingEnemy();
+                    if (ei < 0 || ei >= enemyCount || !enemies[ei].isAlive()) ei = firstLivingEnemy();
+                    if (ei >= 0) {
+                        enemies[ei].getStatus().apply("poison", it.getValue(), 3);
+                        std::cout << "  " << enemies[ei].getName() << " 에 독 부여 (" << it.getValue() << "/턴, 3턴)\n";
+                    }
+                    break;
+                }
+                case PotionType::Explosive: {
+                    std::cout << "  폭발! 전체 적에게 " << it.getValue() << " 피해\n";
+                    for (int ei = 0; ei < enemyCount; ++ei) {
+                        if (!enemies[ei].isAlive()) continue;
+                        enemies[ei].takeDamage(it.getValue());
+                        std::cout << "    -> " << enemies[ei].getName() << " -" << it.getValue() << " HP\n";
+                    }
+                    checkBattleEnd();
+                    break;
+                }
             }
             continue;
         }
@@ -451,7 +530,9 @@ void Battle::executePhase() {
                   << "  → [" << card.getName() << "]";
         if (trackMatch) std::cout << "   ★ Track Match!";
         std::cout << "\n";
+        currentActorIdx = ci;
         resolveCard(card, *party[ci], true, firstLivingEnemy());
+        currentActorIdx = -1;
         party[ci]->clearAssignedCard();
     }
     if (!anyAction) std::cout << "  (행동 없음)\n";
@@ -588,5 +669,6 @@ BattleStats Battle::getStats() const {
     s.damageDealt = totalDamageDealt;
     s.damageTaken = totalDamageTaken;
     s.turns       = turnNumber;
+    for (int i = 0; i < partySize; ++i) s.charDamage[i] = charDamageDealt[i];
     return s;
 }

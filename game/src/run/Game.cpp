@@ -11,6 +11,7 @@
 #include <cstdlib>
 
 Game::Game() : alive(true), gold(0), battleLogCount(0) {
+    for (int i = 0; i < MAX_CHARACTERS; ++i) charTotalDamage[i] = 0;
     selectParty();
     buildPool();
 }
@@ -87,7 +88,7 @@ void Game::handleBattle(bool isBoss) {
         return;
     }
 
-    Battle battle(party, MAX_CHARACTERS, pool);
+    Battle battle(party, MAX_CHARACTERS, pool, &inventory);
 
     if (isBoss) {
         EnemyDef def;
@@ -118,7 +119,15 @@ void Game::handleBattle(bool isBoss) {
     }
 
     if (!won) { alive = false; return; }
-    for (int i = 0; i < MAX_CHARACTERS; ++i) party[i].clearStatus();
+    for (int i = 0; i < MAX_CHARACTERS; ++i) {
+        party[i].clearStatus();
+        charTotalDamage[i] += battle.getStats().charDamage[i];
+    }
+
+    // 전투 후 골드 획득
+    int earned = isBoss ? (rand() % 3 + 3) : (rand() % 2 + 1);
+    gold += earned;
+    std::cout << "  전리품 +" << earned << " 획득  (현재: " << gold << ")\n";
 }
 
 void Game::applyOutcome(const EventOutcome& out) {
@@ -172,18 +181,40 @@ void Game::applyOutcome(const EventOutcome& out) {
 }
 
 void Game::handleShop() {
-    std::cout << "\n";
-    std::cout << "  ── 수상한 상점 ────────────────────────────────────\n";
-    std::cout << "  현재 전리품: " << gold << "\n\n";
-    std::cout << "  [0] 무작위 카드 획득       (전리품 2 소모)\n";
-    std::cout << "  [1] 파티 전체 HP 20 회복   (전리품 1 소모)\n";
-    std::cout << "  [2] 상점 나가기\n";
-    std::cout << "  ───────────────────────────────────────────────────\n";
+    static const struct { Item item; int price; } SHOP_POTIONS[] = {
+        { Item("소형 회복 포션", "HP 15 회복",          15, PotionType::Heal),      1 },
+        { Item("중형 회복 포션", "HP 30 회복",          30, PotionType::Heal),      2 },
+        { Item("대형 회복 포션", "HP 50 회복",          50, PotionType::Heal),      3 },
+        { Item("공격력 포션",   "ATK +8, 3턴",          8,  PotionType::AtkUp),     2 },
+        { Item("방어막 포션",   "방어막 +20, 2턴",       20, PotionType::Shield),    2 },
+        { Item("독 포션",       "적에게 독 8/턴, 3턴",   8,  PotionType::Poison),    2 },
+        { Item("폭발 포션",     "전체 적에게 25 피해",   25, PotionType::Explosive), 3 },
+    };
+    static const int SHOP_SIZE = 7;
 
+    auto printShop = [&]() {
+        std::cout << "\n  ── 수상한 상점 ──────────────────────────────────\n";
+        std::cout << "  전리품: " << gold
+                  << "   인벤토리: " << inventory.size() << "/" << MAX_POTIONS << "\n\n";
+        std::cout << "  [ 카드 ]\n";
+        std::cout << "  [0] 무작위 카드 획득   (전리품 2)\n\n";
+        std::cout << "  [ 포션 ]\n";
+        for (int i = 0; i < SHOP_SIZE; ++i)
+            std::cout << "  [" << (i + 1) << "] "
+                      << std::left << std::setw(16) << SHOP_POTIONS[i].item.getName()
+                      << "  " << std::setw(20) << SHOP_POTIONS[i].item.getDescription()
+                      << "  (전리품 " << SHOP_POTIONS[i].price << ")\n";
+        std::cout << "\n  [q] 상점 나가기\n";
+        std::cout << "  ─────────────────────────────────────────────────\n";
+    };
+
+    printShop();
     while (true) {
         std::cout << "  선택 > ";
         std::string line; std::getline(std::cin, line);
-        int choice = (line.empty() || !(line[0] >= '0' && line[0] <= '9')) ? 2 : std::stoi(line);
+        if (line.empty() || line == "q") { std::cout << "  상점을 나갑니다.\n"; break; }
+        if (!(line[0] >= '0' && line[0] <= '9')) { printShop(); continue; }
+        int choice = std::stoi(line);
 
         if (choice == 0) {
             if (gold < 2) { std::cout << "  전리품이 부족합니다. (필요: 2)\n"; continue; }
@@ -192,16 +223,38 @@ void Game::handleShop() {
             Card c;
             if (creg.size() > 0 && creg.getAt(rand() % creg.size(), c)) {
                 pool.addCard(c);
-                std::cout << "  카드 획득: [" << c.getName() << "] (잔여 전리품: " << gold << ")\n";
+                std::cout << "  카드 획득: [" << c.getName() << "]  (잔여: " << gold << ")\n";
             }
-        } else if (choice == 1) {
-            if (gold < 1) { std::cout << "  전리품이 부족합니다. (필요: 1)\n"; continue; }
-            gold -= 1;
-            for (int i = 0; i < MAX_CHARACTERS; ++i) party[i].heal(20);
-            std::cout << "  파티 전체 HP +20 회복 (잔여 전리품: " << gold << ")\n";
+        } else if (choice >= 1 && choice <= SHOP_SIZE) {
+            int idx = choice - 1;
+            int price = SHOP_POTIONS[idx].price;
+            if (gold < price) { std::cout << "  전리품이 부족합니다. (필요: " << price << ")\n"; continue; }
+            if (inventory.size() >= MAX_POTIONS) {
+                // 인벤토리 꽉 찼으면 교환 여부 물어보기
+                std::cout << "  인벤토리가 꽉 찼습니다.\n";
+                inventory.print();
+                std::cout << "  교환할 아이템 번호 (건너뛰려면 Enter) > ";
+                std::string swapLine; std::getline(std::cin, swapLine);
+                if (!swapLine.empty() && swapLine[0] >= '0' && swapLine[0] <= '9') {
+                    Item old;
+                    if (inventory.takeAt(std::stoi(swapLine), old)) {
+                        inventory.addItem(SHOP_POTIONS[idx].item);
+                        gold -= price;
+                        std::cout << "  [" << old.getName() << "] → ["
+                                  << SHOP_POTIONS[idx].item.getName() << "] 교환  (잔여: " << gold << ")\n";
+                    } else {
+                        std::cout << "  잘못된 번호 — 취소.\n";
+                    }
+                } else {
+                    std::cout << "  구매 취소.\n";
+                }
+            } else {
+                inventory.addItem(SHOP_POTIONS[idx].item);
+                gold -= price;
+                std::cout << "  [" << SHOP_POTIONS[idx].item.getName() << "] 구매  (잔여: " << gold << ")\n";
+            }
         } else {
-            std::cout << "  상점을 나갑니다.\n";
-            break;
+            printShop();
         }
     }
 }
@@ -290,6 +343,55 @@ void Game::printRunSummary() const {
     UI::line(54, '-');
     scoreTree.printDescending();
     UI::line(54, '=');
+
+    // 캐릭터 총 딜량 순위
+    {
+        ScoreRecord charRecords[MAX_CHARACTERS];
+        for (int i = 0; i < MAX_CHARACTERS; ++i)
+            charRecords[i] = ScoreRecord(party[i].getName(), charTotalDamage[i]);
+        sortScoresDescending(charRecords, MAX_CHARACTERS);
+
+        std::cout << "\n  캐릭터 총 딜량 순위\n";
+        UI::line(54, '-');
+        for (int i = 0; i < MAX_CHARACTERS; ++i)
+            std::cout << "  " << std::right << std::setw(2) << (i + 1) << ".  "
+                      << std::left << std::setw(16) << charRecords[i].name
+                      << "  총 딜량: " << charRecords[i].score << "\n";
+        UI::line(54, '=');
+    }
+
+    // 덱 카드 공격력 순위
+    int poolSize = pool.size();
+    if (poolSize > 0) {
+        ScoreRecord* cardRecords = new ScoreRecord[poolSize];
+        for (int i = 0; i < poolSize; ++i) {
+            Card c;
+            pool.getCard(i, c);
+            int dmg = 0;
+            for (int e = 0; e < c.getEffectCount(); ++e) {
+                const Effect& ef = c.getEffect(e);
+                if (ef.type == EffectType::Attack || ef.type == EffectType::HandScaleAttack)
+                    dmg += ef.value;
+            }
+            for (int e = 0; e < c.getBonusEffectCount(); ++e) {
+                const Effect& ef = c.getBonusEffect(e);
+                if (ef.type == EffectType::Attack || ef.type == EffectType::HandScaleAttack)
+                    dmg += ef.value;
+            }
+            cardRecords[i] = ScoreRecord(c.getName(), dmg);
+        }
+        sortScoresDescending(cardRecords, poolSize);
+
+        std::cout << "\n  최종 덱 카드 공격력 순위\n";
+        UI::line(54, '-');
+        for (int i = 0; i < poolSize; ++i)
+            std::cout << "  " << std::right << std::setw(2) << (i + 1) << ".  "
+                      << std::left << std::setw(20) << cardRecords[i].name
+                      << "  공격력: " << cardRecords[i].score << "\n";
+        UI::line(54, '=');
+
+        delete[] cardRecords;
+    }
 }
 
 // ── 메인 게임 루프 ─────────────────────────────────────────────────────────────

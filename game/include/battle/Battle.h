@@ -8,6 +8,7 @@
 #include "card/CardPool.h"
 #include "battle/BattleStats.h"
 #include "ds/Stack.h"
+#include "run/Inventory.h"
 
 class Battle {
 private:
@@ -18,13 +19,16 @@ private:
     Enemy    enemies[MAX_ENEMIES];
     int      enemyCount;
     Hand     hand;
-    CardPool& pool;
+    CardPool&  pool;
+    Inventory* inv;
     int      turnNumber;
     bool     battleOver;
     bool     playerWon;
     int      totalDamageDealt;
     int      totalDamageTaken;
     int      pendingDrawBonus;
+    int      charDamageDealt[MAX_CHARACTERS];
+    int      currentActorIdx;
     Stack<AssignRecord> assignStack;
 
     void drawPhase();
@@ -51,7 +55,7 @@ private:
     int  livingPartyCount() const;
 
 public:
-    Battle(BattleCharacter party[], int partySize, CardPool& pool);
+    Battle(BattleCharacter party[], int partySize, CardPool& pool, Inventory* inv = nullptr);
     void addEnemy(const Enemy& enemy);
     bool        run();
     bool        isPlayerWon() const;
