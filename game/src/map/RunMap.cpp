@@ -27,11 +27,11 @@ int RunMap::roomId(int f, int r, int c) const { return f * 9 + r * 3 + c; }
 
 static const char* roomLabel(RoomType t) {
     switch (t) {
-        case RoomType::Start:   return "시작";
-        case RoomType::Battle:  return "전투";
-        case RoomType::Event:   return "이벤트";
-        case RoomType::Rest:    return "휴식";
-        case RoomType::Stairs:  return "계단";
+        case RoomType::Start:   return "Start";
+        case RoomType::Battle:  return "Battle";
+        case RoomType::Event:   return "Event";
+        case RoomType::Rest:    return "Rest";
+        case RoomType::Stairs:  return "Stairs";
         case RoomType::Boss:    return "BOSS";
     }
     return "??";
@@ -132,42 +132,30 @@ void     RunMap::clearCurrent()       { cleared[cur.floor][cur.row][cur.col] = t
 // ── 출력 ─────────────────────────────────────────────────────────────────────
 
 void RunMap::printMap() const {
-    // 3개 층을 가로로 나란히 표시
-    std::cout << "  ════════════════════════════════════════════════════\n";
+    int f = cur.floor;
+    std::cout << "  ════════════════\n";
+    std::cout << "  FLOOR " << (f + 1) << "\n";
+    std::cout << "  ────────────────\n";
 
-    // 층 헤더
-    std::cout << "  ";
-    for (int f = 0; f < 3; ++f) {
-        bool here = (cur.floor == f);
-        if (here) std::cout << " [FLOOR " << (f + 1) << "] ";
-        else      std::cout << "  FLOOR " << (f + 1) << "  ";
-        if (f < 2) std::cout << "    ";
-    }
-    std::cout << "\n  ────────────────────────────────────────────────────\n";
-
-    // 행 × 열 × 층 순으로 출력
     for (int r = 0; r < 3; ++r) {
         std::cout << "  ";
-        for (int f = 0; f < 3; ++f) {
-            for (int c = 0; c < 3; ++c) {
-                bool here = (cur.floor == f && cur.row == r && cur.col == c);
-                if (here)
-                    std::cout << "[ P ]";
-                else if (cleared[f][r][c] && LAYOUT[f][r][c] != RoomType::Start
-                                          && LAYOUT[f][r][c] != RoomType::Stairs)
-                    std::cout << "[ * ]";
-                else
-                    std::cout << "[" << roomSymbol(LAYOUT[f][r][c]) << "]";
-            }
-            if (f < 2) std::cout << "  ";
+        for (int c = 0; c < 3; ++c) {
+            bool here = (cur.row == r && cur.col == c);
+            if (here)
+                std::cout << "[ P ]";
+            else if (cleared[f][r][c] && LAYOUT[f][r][c] != RoomType::Start
+                                      && LAYOUT[f][r][c] != RoomType::Stairs)
+                std::cout << "[ * ]";
+            else
+                std::cout << "[" << roomSymbol(LAYOUT[f][r][c]) << "]";
         }
         std::cout << "\n";
     }
 
-    std::cout << "  ────────────────────────────────────────────────────\n";
-    std::cout << "  S=시작  B=전투  E=이벤트  R=휴식  ^=계단  X=보스  *=클리어  P=현재\n";
-    std::cout << "  이동: w=위  s=아래  a=왼쪽  d=오른쪽   u=되돌리기   h=도움말\n";
-    std::cout << "  ════════════════════════════════════════════════════\n\n";
+    std::cout << "  ────────────────\n";
+    std::cout << "  S=start B=battle E=event R=rest ^=stairs X=boss *=cleared P=you\n";
+    std::cout << "  Move: w=up  s=down  a=left  d=right   u=undo   h=help\n";
+    std::cout << "  ════════════════\n\n";
 }
 
 void RunMap::printGraph() const {

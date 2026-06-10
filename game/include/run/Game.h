@@ -21,13 +21,13 @@ private:
     bool            alive;
 
     Inventory   inventory;
-    int         gold;
     BattleStats battleLog[MAX_MAP_NODES];
     int         battleLogCount;
     ScoreTree   scoreTree;
     int         charTotalDamage[MAX_CHARACTERS];
 
     void selectParty();
+    void selectStartingDeck();
     void buildPool();
     void handleBattle(bool isBoss = false);
     void handleEvent();

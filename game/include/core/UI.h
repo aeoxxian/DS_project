@@ -22,9 +22,22 @@ inline void sleep(int ms) {
 }
 
 inline void pause() {
-    std::cout << "\n  [ Enter ] 계속... ";
+    std::cout << "\n  [ Enter ] Continue... ";
     std::string s;
     std::getline(std::cin, s);
+}
+
+// UTF-8 display width: Korean/CJK 3-byte chars = 2 columns, ASCII = 1
+inline int displayWidth(const std::string& s) {
+    int w = 0;
+    for (size_t i = 0; i < s.size(); ) {
+        unsigned char c = (unsigned char)s[i];
+        if      (c < 0x80) { i += 1; w += 1; }
+        else if (c < 0xE0) { i += 2; w += 1; }
+        else if (c < 0xF0) { i += 3; w += 2; }  // Korean/CJK
+        else               { i += 4; w += 2; }
+    }
+    return w;
 }
 
 // ── 텍스트 효과 ───────────────────────────────────────────────────────────────
@@ -93,14 +106,14 @@ inline void boxEmpty(int w = 58) {
 
 // 왼쪽 정렬 (내부 2칸 들여쓰기)
 inline void boxLeft(const std::string& s, int w = 58) {
-    int pad = w - 2 - (int)s.size();
+    int pad = w - 2 - displayWidth(s);
     if (pad < 0) pad = 0;
     std::cout << "  ║  " << s << std::string(pad, ' ') << "║\n";
 }
 
-// 가운데 정렬 (ASCII/한글 혼용 시 근사치)
+// 가운데 정렬
 inline void boxCenter(const std::string& s, int w = 58) {
-    int total = w - (int)s.size();
+    int total = w - displayWidth(s);
     int left  = total / 2; if (left  < 0) left  = 0;
     int right = total - left; if (right < 0) right = 0;
     std::cout << "  ║" << std::string(left, ' ') << s
@@ -139,26 +152,26 @@ inline void banner(const std::string& line1, const std::string& line2 = "") {
 
 // ── 전체 도움말 ───────────────────────────────────────────────────────────────
 inline void printHelp() {
-    static const int HW = 50;
+    static const int HW = 52;
     std::cout << "\n";
     boxTop(HW);
-    boxCenter("[ 탐색 명령어 ]", HW);
+    boxCenter("[ MAP COMMANDS ]", HW);
     boxDiv(HW);
-    boxLeft("w/a/s/d   이동 (위/왼쪽/아래/오른쪽)", HW);
-    boxLeft("u/undo    직전 방으로 되돌리기 (Stack)", HW);
-    boxLeft("l/look    맵 + 파티 상태 다시 보기", HW);
-    boxLeft("g/graph   던전 그래프 구조 보기 (DFS)", HW);
-    boxLeft("i/inv     인벤토리 확인", HW);
-    boxLeft("q         현재 위치 유지", HW);
+    boxLeft("w/a/s/d   Move (up/left/down/right)", HW);
+    boxLeft("u/undo    Undo last move (Stack)", HW);
+    boxLeft("l/look    Refresh map + party status", HW);
+    boxLeft("g/graph   Dungeon graph view (DFS)", HW);
+    boxLeft("i/inv     Inventory", HW);
+    boxLeft("q         Stay in place", HW);
     boxDiv(HW);
-    boxCenter("[ 전투 중 명령어 ]", HW);
+    boxCenter("[ BATTLE COMMANDS ]", HW);
     boxDiv(HW);
-    boxLeft("[숫자]    카드 번호 입력 → 캐릭터에 배정", HW);
-    boxLeft("use       인벤토리 포션 사용", HW);
-    boxLeft("switch    자리 바꾸기 (행동 소비)", HW);
-    boxLeft("l/look    전투 상황 + 손패 다시 보기", HW);
-    boxLeft("u/undo    직전 배정 취소", HW);
-    boxLeft("q         전투 포기 (게임 오버)", HW);
+    boxLeft("[num]     Card index -> assign to character", HW);
+    boxLeft("use       Use potion from inventory", HW);
+    boxLeft("switch    Swap formation positions (uses turn)", HW);
+    boxLeft("l/look    Refresh battle state + hand", HW);
+    boxLeft("u/undo    Undo last card assignment", HW);
+    boxLeft("q         Forfeit (game over)", HW);
     boxBot(HW);
     std::cout << "\n";
 }

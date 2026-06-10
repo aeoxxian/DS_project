@@ -12,44 +12,57 @@ static int safeInt(const std::string& s, int fallback) {
 }
 
 void RestRoom::enter(BattleCharacter characters[], int count, CardPool& pool) {
+    (void)pool;
     std::cout << "\n";
     UI::boxTop(W);
-    UI::boxCenter("★  휴식  ★", W);
+    UI::boxCenter("★  REST  ★", W);
     UI::boxMid(W);
-    UI::boxLeft("[0]  HP 회복 (+" + std::to_string(REST_HEAL_AMOUNT) + ")", W);
-    UI::boxLeft("[1]  카드 강화", W);
+    UI::boxLeft("[0]  Heal all  (+20 HP)", W);
+    UI::boxLeft("[1]  +1 ATK  (permanent, one character)", W);
+    UI::boxLeft("[2]  +1 DEF  (permanent, one character)", W);
     UI::boxBot(W);
-    std::cout << "\n  선택 > ";
+    std::cout << "\n  > ";
 
     std::string line;
     std::getline(std::cin, line);
     int choice = safeInt(line, 0);
 
-    if (choice == 1) upgradeOption(pool);
-    else             healOption(characters, count);
+    if (choice == 1 || choice == 2) {
+        std::cout << "\n  Characters:\n";
+        for (int i = 0; i < count; ++i) {
+            if (!characters[i].isAlive()) continue;
+            std::cout << "  [" << i << "] " << characters[i].getName()
+                      << "  ATK:" << characters[i].getAttackPower()
+                      << "  DEF:" << characters[i].getDefend() << "\n";
+        }
+        std::cout << "  Choose character > ";
+        std::string charLine;
+        std::getline(std::cin, charLine);
+        int ci = safeInt(charLine, -1);
+        if (ci < 0 || ci >= count || !characters[ci].isAlive()) {
+            UI::typewrite("Invalid selection.", 15);
+            return;
+        }
+        if (choice == 1) {
+            characters[ci].permBoostAtk(1);
+            UI::typewrite(characters[ci].getName() + " ATK +1 (permanent)", 15);
+        } else {
+            characters[ci].permBoostDef(1);
+            UI::typewrite(characters[ci].getName() + " DEF +1 (permanent)", 15);
+        }
+    } else {
+        healOption(characters, count);
+    }
 }
 
 void RestRoom::healOption(BattleCharacter characters[], int count) {
     for (int i = 0; i < count; ++i) characters[i].heal(REST_HEAL_AMOUNT);
     std::cout << "\n";
-    UI::typewrite("아군 전체 HP +" + std::to_string(REST_HEAL_AMOUNT), 15);
+    UI::typewrite("Party healed +" + std::to_string(REST_HEAL_AMOUNT) + " HP", 15);
     std::cout << "\n";
 }
 
 void RestRoom::upgradeOption(CardPool& pool) {
-    if (pool.isEmpty()) {
-        UI::typewrite("카드풀이 비어있습니다.", 15);
-        return;
-    }
-    pool.print();
-    std::cout << "\n  강화할 카드 인덱스 > ";
-    std::string line;
-    std::getline(std::cin, line);
-    int idx = safeInt(line, -1);
-    Card card;
-    if (!pool.getCard(idx, card)) {
-        UI::typewrite("유효하지 않은 인덱스.", 15);
-        return;
-    }
-    UI::typewrite("[" + card.getName() + "] 강화 완료. (추후 구현)", 15);
+    (void)pool;
+    // Replaced by permanent stat boost in enter()
 }

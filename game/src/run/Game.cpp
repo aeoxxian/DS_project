@@ -6,15 +6,16 @@
 #include "registry/MonsterRegistry.h"
 #include "registry/EventRegistry.h"
 #include "ds/Sorting.h"
+#include "ds/DynamicArray.h"
 #include <iostream>
 #include <iomanip>
 #include <sstream>
 #include <cstdlib>
 
-Game::Game() : alive(true), gold(0), battleLogCount(0) {
+Game::Game() : alive(true), battleLogCount(0) {
     for (int i = 0; i < MAX_CHARACTERS; ++i) charTotalDamage[i] = 0;
     selectParty();
-    buildPool();
+    selectStartingDeck();
 }
 
 void Game::selectParty() {
@@ -26,17 +27,16 @@ void Game::selectParty() {
     UI::boxTop(W);
     UI::boxCenter("D U N G E O N   E X P L O R E R", W);
     UI::boxMid(W);
-    UI::boxCenter("파티 구성  —  3명을 차례로 선택하세요", W);
+    UI::boxCenter("Party Setup  --  Select 3 characters", W);
     UI::boxDiv(W);
 
     if (roster.size() == 0) {
-        UI::boxLeft("(등록된 캐릭터 없음)", W);
+        UI::boxLeft("(no characters registered)", W);
     } else {
-        // header row
         std::ostringstream hdr;
-        hdr << std::left << std::setw(5) << "번호"
-            << std::setw(18) << "이름"
-            << std::setw(14) << "트랙"
+        hdr << std::left << std::setw(5) << "No."
+            << std::setw(12) << "Name"
+            << std::setw(14) << "Track"
             << std::right
             << std::setw(5) << "HP"
             << std::setw(5) << "ATK"
@@ -49,7 +49,7 @@ void Game::selectParty() {
             roster.getAt(i, def);
             std::ostringstream row;
             row << "[" << i << "]  "
-                << std::left  << std::setw(18) << def.name
+                << std::left  << std::setw(12) << def.name
                 << std::setw(14) << trackToString(def.track)
                 << std::right
                 << std::setw(5) << def.baseHP
@@ -62,30 +62,164 @@ void Game::selectParty() {
     UI::boxBot(W);
     std::cout << "\n";
 
+    int chosenIds[MAX_CHARACTERS];
+    int chosenCount = 0;
+
     for (int i = 0; i < MAX_CHARACTERS; ++i) {
-        std::cout << "  " << (i + 1) << "번째 캐릭터 > ";
-        std::string line;
-        std::getline(std::cin, line);
+        while (true) {
+            std::cout << "  Character " << (i + 1) << " > ";
+            std::string line;
+            std::getline(std::cin, line);
 
-        int idx = 0;
-        if (!line.empty() && line[0] >= '0' && line[0] <= '9')
-            idx = std::stoi(line);
+            int idx = 0;
+            if (!line.empty() && line[0] >= '0' && line[0] <= '9')
+                idx = std::stoi(line);
 
-        CharacterDef def;
-        if (!roster.getAt(idx, def)) {
-            if (roster.size() > 0) roster.getAt(0, def);
+            CharacterDef def;
+            if (!roster.getAt(idx, def)) {
+                std::cout << "  Invalid number.\n";
+                continue;
+            }
+
+            // Check for duplicate
+            bool dup = false;
+            for (int k = 0; k < chosenCount; ++k)
+                if (chosenIds[k] == def.id) { dup = true; break; }
+            if (dup) {
+                std::cout << "  Already selected! Choose a different character.\n";
+                continue;
+            }
+
+            chosenIds[chosenCount++] = def.id;
+            party[i] = BattleCharacter(def);
+            UI::typewrite(">>  " + def.name + "  [" + trackToString(def.track) + "]", 12);
+            break;
         }
-        party[i] = BattleCharacter(def);
-        UI::typewrite("▷  " + def.name + "  [" + trackToString(def.track) + "]  선택", 12);
     }
 
     std::cout << "\n";
     UI::boxTop(W);
-    UI::boxCenter("★  파티 구성 완료  ★", W);
+    UI::boxCenter("★  Party Ready  ★", W);
     UI::boxDiv(W);
     for (int i = 0; i < MAX_CHARACTERS; ++i) {
         std::string row = "  " + std::to_string(i + 1) + ".  " + party[i].getName()
                         + "  [" + trackToString(party[i].getTrack()) + "]";
+        UI::boxLeft(row, W);
+    }
+    UI::boxBot(W);
+    std::cout << "\n";
+    UI::pause();
+}
+
+// 카드 목록 출력 헬퍼
+static void printCardList(const DynamicArray<Card>& list) {
+    for (int i = 0; i < list.size(); ++i) {
+        std::cout << "  [" << std::setw(2) << i << "] "
+                  << std::left << std::setw(18) << list[i].getName()
+                  << "  " << list[i].getDescription() << "\n";
+    }
+}
+
+// 단계별 카드 선택: list에서 need장을 골라 pool에 추가
+// 헤더: "Common (0/10)" 형태
+static void pickPhase(CardPool& pool, const DynamicArray<Card>& list,
+                      int need, const std::string& label) {
+    static const int W = 58;
+    int picked = 0;
+
+    while (picked < need) {
+        UI::clear();
+        std::cout << "\n";
+        UI::boxTop(W);
+        std::string title = label + "  (" + std::to_string(picked)
+                          + "/" + std::to_string(need) + ")";
+        UI::boxCenter(title, W);
+        UI::boxDiv(W);
+        UI::boxLeft("[u]  Undo last pick", W);
+        UI::boxBot(W);
+
+        std::cout << "\n";
+        printCardList(list);
+
+        // Mini deck summary
+        std::cout << "\n  -- Deck so far (" << pool.size() << "/25) --\n";
+        for (int i = 0; i < pool.size(); ++i) {
+            Card c; pool.getCard(i, c);
+            std::cout << "  " << i << ". " << c.getName() << "\n";
+        }
+
+        std::cout << "\n  > ";
+        std::string line;
+        std::getline(std::cin, line);
+
+        if (line.empty()) continue;
+
+        if (line == "u" || line == "undo") {
+            if (picked > 0) {
+                pool.removeCard(pool.size() - 1);
+                --picked;
+                std::cout << "  Removed last pick.\n";
+            } else {
+                std::cout << "  Nothing to undo.\n";
+            }
+            continue;
+        }
+
+        int idx = -1;
+        if (line[0] >= '0' && line[0] <= '9') idx = std::stoi(line);
+        if (idx < 0 || idx >= list.size()) {
+            std::cout << "  Invalid index.\n";
+            continue;
+        }
+        pool.addCard(list[idx]);
+        ++picked;
+    }
+}
+
+void Game::selectStartingDeck() {
+    CardRegistry& reg = CardRegistry::instance();
+
+    // 공용 카드 목록
+    DynamicArray<Card> commonCards;
+    for (int i = 0; i < reg.size(); ++i) {
+        Card c;
+        if (!reg.getAt(i, c)) continue;
+        if (c.getId() == 32) continue;         // enemy-only
+        if (c.getTrack() == Track::None) commonCards.pushBack(c);
+    }
+
+    // 각 캐릭터별 트랙 카드 목록
+    DynamicArray<Card> trackCards[MAX_CHARACTERS];
+    for (int p = 0; p < MAX_CHARACTERS; ++p) {
+        Track t = party[p].getTrack();
+        for (int i = 0; i < reg.size(); ++i) {
+            Card c;
+            if (!reg.getAt(i, c)) continue;
+            if (c.getTrack() == t) trackCards[p].pushBack(c);
+        }
+    }
+
+    // 단계 1: 공용 카드 10장
+    pickPhase(pool, commonCards, 10, "Common  (pick 10)");
+
+    // 단계 2~4: 캐릭터별 트랙 카드 5장
+    for (int p = 0; p < MAX_CHARACTERS; ++p) {
+        std::string label = party[p].getName()
+                          + " [" + trackToString(party[p].getTrack()) + "]"
+                          + "  (pick 5)";
+        pickPhase(pool, trackCards[p], 5, label);
+    }
+
+    // 완료 안내
+    static const int W = 58;
+    UI::clear();
+    std::cout << "\n";
+    UI::boxTop(W);
+    UI::boxCenter("DECK READY  --  25 cards", W);
+    UI::boxDiv(W);
+    for (int i = 0; i < pool.size(); ++i) {
+        Card c; pool.getCard(i, c);
+        std::string row = std::to_string(i + 1) + ".  " + c.getName();
         UI::boxLeft(row, W);
     }
     UI::boxBot(W);
@@ -107,7 +241,7 @@ void Game::buildPool() {
 void Game::handleBattle(bool isBoss) {
     MonsterRegistry& reg = MonsterRegistry::instance();
     if (reg.size() == 0) {
-        std::cout << "\n  (등록된 몬스터 없음 — MonsterRegistry.cpp에 추가하세요)\n";
+        std::cout << "\n  (No monsters registered)\n";
         UI::pause();
         return;
     }
@@ -147,29 +281,24 @@ void Game::handleBattle(bool isBoss) {
         party[i].clearStatus();
         charTotalDamage[i] += battle.getStats().charDamage[i];
     }
-
-    // 전투 후 골드 획득
-    int earned = isBoss ? (rand() % 3 + 3) : (rand() % 2 + 1);
-    gold += earned;
-    std::cout << "  전리품 +" << earned << " 획득  (현재: " << gold << ")\n";
 }
 
 void Game::applyOutcome(const EventOutcome& out) {
     switch (out.type) {
         case OutcomeType::HealParty:
             for (int i = 0; i < MAX_CHARACTERS; ++i) party[i].heal(out.value);
-            std::cout << "  파티 전체 HP +" << out.value << " 회복\n";
+            std::cout << "  Party HP +" << out.value << "\n";
             break;
         case OutcomeType::DamageParty:
             for (int i = 0; i < MAX_CHARACTERS; ++i) party[i].takeDamage(out.value);
-            std::cout << "  파티 전체 피해 " << out.value << "\n";
+            std::cout << "  Party took " << out.value << " damage\n";
             break;
         case OutcomeType::AddCard: {
             CardRegistry& creg = CardRegistry::instance();
             Card c;
             if (creg.size() > 0 && creg.getAt(rand() % creg.size(), c)) {
                 pool.addCard(c);
-                std::cout << "  카드 획득: [" << c.getName() << "]\n";
+                std::cout << "  Card gained: [" << c.getName() << "]\n";
             }
             break;
         }
@@ -177,25 +306,21 @@ void Game::applyOutcome(const EventOutcome& out) {
             if (!pool.isEmpty()) pool.removeCard(rand() % pool.size());
             break;
         case OutcomeType::RemoveSelectedCard: {
-            if (pool.isEmpty()) { std::cout << "  제거할 카드가 없습니다.\n"; break; }
+            if (pool.isEmpty()) { std::cout << "  No cards to remove.\n"; break; }
             std::cout << "\n";
             pool.print();
-            std::cout << "  제거할 카드 번호 > ";
+            std::cout << "  Remove card number > ";
             std::string line; std::getline(std::cin, line);
             int idx = (line.empty() || !(line[0] >= '0' && line[0] <= '9')) ? -1 : std::stoi(line);
             if (pool.removeCard(idx))
-                std::cout << "  카드 제거 완료.\n";
+                std::cout << "  Card removed.\n";
             else
-                std::cout << "  잘못된 번호 — 스킵.\n";
+                std::cout << "  Invalid -- skipped.\n";
             break;
         }
         case OutcomeType::GainGold:
-            gold += out.value;
-            std::cout << "  전리품 +" << out.value << " (현재: " << gold << ")\n";
             break;
         case OutcomeType::LoseGold:
-            gold = (gold > out.value) ? gold - out.value : 0;
-            std::cout << "  전리품 -" << out.value << " (현재: " << gold << ")\n";
             break;
         case OutcomeType::OpenShop:
             handleShop();
@@ -205,78 +330,72 @@ void Game::applyOutcome(const EventOutcome& out) {
 }
 
 void Game::handleShop() {
-    static const struct { Item item; int price; } SHOP_POTIONS[] = {
-        { Item("소형 회복 포션", "HP 15 회복",          15, PotionType::Heal),      1 },
-        { Item("중형 회복 포션", "HP 30 회복",          30, PotionType::Heal),      2 },
-        { Item("대형 회복 포션", "HP 50 회복",          50, PotionType::Heal),      3 },
-        { Item("공격력 포션",   "ATK +8, 3턴",          8,  PotionType::AtkUp),     2 },
-        { Item("방어막 포션",   "방어막 +20, 2턴",       20, PotionType::Shield),    2 },
-        { Item("독 포션",       "적에게 독 8/턴, 3턴",   8,  PotionType::Poison),    2 },
-        { Item("폭발 포션",     "전체 적에게 25 피해",   25, PotionType::Explosive), 3 },
+    static const Item SHOP_POTIONS[] = {
+        Item("소형 회복 포션", "HP +15",              15, PotionType::Heal),
+        Item("중형 회복 포션", "HP +30",              30, PotionType::Heal),
+        Item("대형 회복 포션", "HP +50",              50, PotionType::Heal),
+        Item("공격력 포션",   "ATK +8 (3 turns)",     8,  PotionType::AtkUp),
+        Item("방어막 포션",   "Shield +20 (2 turns)", 20, PotionType::Shield),
+        Item("독 포션",       "Poison enemy 8/t, 3t", 8,  PotionType::Poison),
+        Item("폭발 포션",     "All enemies -25 HP",   25, PotionType::Explosive),
     };
     static const int SHOP_SIZE = 7;
 
     auto printShop = [&]() {
-        std::cout << "\n  ── 수상한 상점 ──────────────────────────────────\n";
-        std::cout << "  전리품: " << gold
-                  << "   인벤토리: " << inventory.size() << "/" << MAX_POTIONS << "\n\n";
-        std::cout << "  [ 카드 ]\n";
-        std::cout << "  [0] 무작위 카드 획득   (전리품 2)\n\n";
-        std::cout << "  [ 포션 ]\n";
+        std::cout << "\n  -- FREE SUPPLY ------------------------------------\n";
+        std::cout << "  Pick one item for free.  Inventory: "
+                  << inventory.size() << "/" << MAX_POTIONS << "\n\n";
+        std::cout << "  [ Card ]\n";
+        std::cout << "  [0] Random card\n\n";
+        std::cout << "  [ Potions ]\n";
         for (int i = 0; i < SHOP_SIZE; ++i)
             std::cout << "  [" << (i + 1) << "] "
-                      << std::left << std::setw(16) << SHOP_POTIONS[i].item.getName()
-                      << "  " << std::setw(20) << SHOP_POTIONS[i].item.getDescription()
-                      << "  (전리품 " << SHOP_POTIONS[i].price << ")\n";
-        std::cout << "\n  [q] 상점 나가기\n";
-        std::cout << "  ─────────────────────────────────────────────────\n";
+                      << std::left << std::setw(16) << SHOP_POTIONS[i].getName()
+                      << "  " << SHOP_POTIONS[i].getDescription() << "\n";
+        std::cout << "\n  [q] Skip\n";
+        std::cout << "  --------------------------------------------------\n";
     };
 
     printShop();
     while (true) {
-        std::cout << "  선택 > ";
+        std::cout << "  > ";
         std::string line; std::getline(std::cin, line);
-        if (line.empty() || line == "q") { std::cout << "  상점을 나갑니다.\n"; break; }
+        if (line.empty() || line == "q") { std::cout << "  Skipped.\n"; break; }
         if (!(line[0] >= '0' && line[0] <= '9')) { printShop(); continue; }
         int choice = std::stoi(line);
 
         if (choice == 0) {
-            if (gold < 2) { std::cout << "  전리품이 부족합니다. (필요: 2)\n"; continue; }
-            gold -= 2;
             CardRegistry& creg = CardRegistry::instance();
             Card c;
             if (creg.size() > 0 && creg.getAt(rand() % creg.size(), c)) {
                 pool.addCard(c);
-                std::cout << "  카드 획득: [" << c.getName() << "]  (잔여: " << gold << ")\n";
+                std::cout << "  Card added: [" << c.getName() << "]\n";
             }
+            break;
         } else if (choice >= 1 && choice <= SHOP_SIZE) {
             int idx = choice - 1;
-            int price = SHOP_POTIONS[idx].price;
-            if (gold < price) { std::cout << "  전리품이 부족합니다. (필요: " << price << ")\n"; continue; }
             if (inventory.size() >= MAX_POTIONS) {
-                // 인벤토리 꽉 찼으면 교환 여부 물어보기
-                std::cout << "  인벤토리가 꽉 찼습니다.\n";
+                std::cout << "  Inventory full.\n";
                 inventory.print();
-                std::cout << "  교환할 아이템 번호 (건너뛰려면 Enter) > ";
+                std::cout << "  Swap item number (Enter to cancel) > ";
                 std::string swapLine; std::getline(std::cin, swapLine);
                 if (!swapLine.empty() && swapLine[0] >= '0' && swapLine[0] <= '9') {
                     Item old;
                     if (inventory.takeAt(std::stoi(swapLine), old)) {
-                        inventory.addItem(SHOP_POTIONS[idx].item);
-                        gold -= price;
-                        std::cout << "  [" << old.getName() << "] → ["
-                                  << SHOP_POTIONS[idx].item.getName() << "] 교환  (잔여: " << gold << ")\n";
+                        inventory.addItem(SHOP_POTIONS[idx]);
+                        std::cout << "  [" << old.getName() << "] -> ["
+                                  << SHOP_POTIONS[idx].getName() << "]\n";
                     } else {
-                        std::cout << "  잘못된 번호 — 취소.\n";
+                        std::cout << "  Invalid -- cancelled.\n";
                     }
                 } else {
-                    std::cout << "  구매 취소.\n";
+                    std::cout << "  Cancelled.\n";
                 }
             } else {
-                inventory.addItem(SHOP_POTIONS[idx].item);
-                gold -= price;
-                std::cout << "  [" << SHOP_POTIONS[idx].item.getName() << "] 구매  (잔여: " << gold << ")\n";
+                inventory.addItem(SHOP_POTIONS[idx]);
+                std::cout << "  Got [" << SHOP_POTIONS[idx].getName() << "]\n";
             }
+            break;
         } else {
             printShop();
         }
@@ -286,7 +405,7 @@ void Game::handleShop() {
 void Game::handleEvent() {
     EventRegistry& reg = EventRegistry::instance();
     if (reg.size() == 0) {
-        std::cout << "\n  (등록된 이벤트 없음 — EventRegistry.cpp에 추가하세요)\n";
+        std::cout << "\n  (No events registered)\n";
         UI::pause();
         return;
     }
@@ -314,12 +433,12 @@ void Game::handleRest() {
     rest.enter(party, MAX_CHARACTERS, pool);
 }
 
-// ── 파티 현황 ─────────────────────────────────────────────────────────────────
+// ── Party status display ──────────────────────────────────────────────────────
 static void printPartyStatus(BattleCharacter party[], int count) {
-    std::cout << "\n  [ 파티 현황 ]\n";
+    std::cout << "\n  [ PARTY STATUS ]\n";
     for (int i = 0; i < count; ++i) {
         if (!party[i].isAlive()) {
-            std::cout << "  [" << i << "] " << party[i].getName() << "  -- 사망\n";
+            std::cout << "  [" << i << "] " << party[i].getName() << "  -- DEAD\n";
             continue;
         }
         std::cout << "  [" << i << "] "
@@ -338,7 +457,7 @@ static void printPartyStatus(BattleCharacter party[], int count) {
 void Game::printRunSummary() const {
     if (battleLogCount == 0) return;
 
-    std::cout << "\n  던전 구조 (DungeonGraph DFS)\n";
+    std::cout << "\n  Dungeon structure (DungeonGraph DFS)\n";
     UI::line(54, '-');
     map.printGraph();
 
@@ -348,9 +467,9 @@ void Game::printRunSummary() const {
 
     std::cout << "\n";
     UI::line(54, '=');
-    std::cout << "  런 전투 통계 (입힌 데미지 순)\n";
+    std::cout << "  Battle Log (sorted by damage dealt)\n";
     UI::line(54, '=');
-    std::cout << "  전투                 입힘   받음   턴\n";
+    std::cout << "  Battle                Dealt  Taken  Turns\n";
     UI::line(54, '-');
     for (int i = 0; i < battleLogCount; ++i) {
         const BattleStats& s = sorted[i];
@@ -359,32 +478,32 @@ void Game::printRunSummary() const {
                   << std::right
                   << std::setw(6) << s.damageDealt
                   << std::setw(7) << s.damageTaken
-                  << std::setw(5) << s.turns << "\n";
+                  << std::setw(7) << s.turns << "\n";
     }
     UI::line(54, '=');
 
-    std::cout << "\n  전투 효율 랭킹 (입힌 데미지 - 받은 데미지)\n";
+    std::cout << "\n  Battle efficiency ranking (dealt - taken)\n";
     UI::line(54, '-');
     scoreTree.printDescending();
     UI::line(54, '=');
 
-    // 캐릭터 총 딜량 순위
+    // Character total damage ranking
     {
         ScoreRecord charRecords[MAX_CHARACTERS];
         for (int i = 0; i < MAX_CHARACTERS; ++i)
             charRecords[i] = ScoreRecord(party[i].getName(), charTotalDamage[i]);
         sortScoresDescending(charRecords, MAX_CHARACTERS);
 
-        std::cout << "\n  캐릭터 총 딜량 순위\n";
+        std::cout << "\n  Character total damage ranking\n";
         UI::line(54, '-');
         for (int i = 0; i < MAX_CHARACTERS; ++i)
             std::cout << "  " << std::right << std::setw(2) << (i + 1) << ".  "
                       << std::left << std::setw(16) << charRecords[i].name
-                      << "  총 딜량: " << charRecords[i].score << "\n";
+                      << "  Total: " << charRecords[i].score << "\n";
         UI::line(54, '=');
     }
 
-    // 덱 카드 공격력 순위
+    // Final deck card attack ranking
     int poolSize = pool.size();
     if (poolSize > 0) {
         ScoreRecord* cardRecords = new ScoreRecord[poolSize];
@@ -406,24 +525,24 @@ void Game::printRunSummary() const {
         }
         sortScoresDescending(cardRecords, poolSize);
 
-        std::cout << "\n  최종 덱 카드 공격력 순위\n";
+        std::cout << "\n  Final deck card attack ranking\n";
         UI::line(54, '-');
         for (int i = 0; i < poolSize; ++i)
             std::cout << "  " << std::right << std::setw(2) << (i + 1) << ".  "
                       << std::left << std::setw(20) << cardRecords[i].name
-                      << "  공격력: " << cardRecords[i].score << "\n";
+                      << "  ATK: " << cardRecords[i].score << "\n";
         UI::line(54, '=');
 
         delete[] cardRecords;
     }
 }
 
-// ── 메인 게임 루프 ─────────────────────────────────────────────────────────────
+// ── Main game loop ─────────────────────────────────────────────────────────────
 
 void Game::run() {
     UI::clear();
-    std::cout << "\n  ══════════════════ 던전 입장 ══════════════════\n";
-    std::cout << "\n  파티: ";
+    std::cout << "\n  ══════════════════ DUNGEON ENTER ══════════════════\n";
+    std::cout << "\n  Party: ";
     for (int i = 0; i < MAX_CHARACTERS; ++i) {
         if (i > 0) std::cout << "  /  ";
         std::cout << party[i].getName();
@@ -463,48 +582,48 @@ void Game::run() {
         }
         if (cmd == "u" || cmd == "undo") {
             if (map.undoMove())
-                std::cout << "  ← 직전 방으로 되돌아왔습니다.\n";
+                std::cout << "  Returned to previous room.\n";
             else
-                std::cout << "  더 이상 되돌릴 수 없습니다.\n";
+                std::cout << "  Nothing to undo.\n";
             UI::pause();
             continue;
         }
 
-        // 이동: w/a/s/d
+        // Move: w/a/s/d
         if (cmd.size() == 1 && (cmd[0]=='w'||cmd[0]=='a'||cmd[0]=='s'||cmd[0]=='d')) {
             if (!map.move(cmd[0])) {
                 UI::pause();
                 continue;
             }
         } else {
-            std::cout << "  알 수 없는 명령입니다. h=도움말\n";
+            std::cout << "  Unknown command. h=help\n";
             UI::pause();
             continue;
         }
 
-        // ── 방 효과 ───────────────────────────────────────────────────────────
+        // ── Room effects ─────────────────────────────────────────────────────
         RoomType type = map.currentType();
 
         if (map.isCleared()) {
             if (type != RoomType::Start && type != RoomType::Stairs)
-                std::cout << "\n  이미 클리어한 방입니다.\n";
+                std::cout << "\n  Room already cleared.\n";
         } else {
             map.clearCurrent();
             switch (type) {
                 case RoomType::Battle:
-                    UI::banner("  ⚔  전투 발생!");
+                    UI::banner("  ⚔  BATTLE!");
                     handleBattle();
                     break;
                 case RoomType::Event:
-                    UI::banner("  !  이벤트 발생!");
+                    UI::banner("  !  EVENT!");
                     handleEvent();
                     break;
                 case RoomType::Rest:
-                    UI::banner("  휴식처 발견  ─  잠시 숨을 고릅니다.");
+                    UI::banner("  Rest area found.");
                     handleRest();
                     break;
                 case RoomType::Boss:
-                    UI::banner("  !!  BOSS 전투  !!", "  강력한 적이 기다리고 있습니다!");
+                    UI::banner("  !!  BOSS BATTLE  !!", "  A powerful enemy awaits!");
                     handleBattle(true);
                     break;
                 case RoomType::Start:   break;
@@ -514,31 +633,31 @@ void Game::run() {
 
         if (!alive) break;
 
-        // ── 계단방 처리 ───────────────────────────────────────────────────────
+        // ── Stairs handling ──────────────────────────────────────────────────
         if (map.isAtStairs()) {
-            std::cout << "\n  다음 층으로 이동하시겠습니까? (y/n) > ";
+            std::cout << "\n  Advance to next floor? (y/n) > ";
             std::string ans;
             std::getline(std::cin, ans);
             if (!ans.empty() && ans[0] == 'y') {
                 if (map.advanceFloor()) {
-                    std::cout << "  → 다음 층으로 이동했습니다!\n";
+                    std::cout << "  -> Advanced to next floor!\n";
                     UI::pause();
                 }
             }
             continue;
         }
 
-        // ── 보스 처치 확인 ────────────────────────────────────────────────────
+        // ── Boss cleared check ───────────────────────────────────────────────
         if (map.isAtBoss() && map.isCleared()) break;
     }
 
     UI::clear();
     if (alive) {
         UI::banner("★  D U N G E O N  C L E A R !  ★",
-                   "  보스를 처치하고 던전을 탈출했습니다!");
+                   "  Boss defeated! Dungeon escaped!");
     } else {
         UI::banner("G A M E  O V E R",
-                   "  파티가 쓰러졌습니다...");
+                   "  Party has fallen...");
     }
     printRunSummary();
 }

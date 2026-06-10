@@ -84,28 +84,30 @@
 
 ### Normal Monsters
 
+HP는 원본 대비 약 30% 감소. ATK/DEF는 원본 그대로.
+
 | Name | Track | HP | ATK | DEF | Cards |
 |------|------|---:|----:|----:|-------|
-| Fission Hound | Nuclear | 60 | 8 | 4 | Strike, Poison Dart, Fission Burst |
-| Reactor Wraith | Nuclear | 100 | 12 | 6 | Radiation Pulse, Containment Breach, Guard |
-| Nano Swarm | NewMaterial | 50 | 7 | 5 | Double Strike, Disarm, Nano Blade |
-| Carbon Golem | NewMaterial | 120 | 10 | 14 | Composite Shield, Graphene Edge, Heavy Blow |
-| Cryo Crawler | Hydrogen | 55 | 9 | 5 | Cryo Jet, Disarm, Strike |
-| Plasma Leech | Hydrogen | 80 | 11 | 6 | Fuel Cell Blast, Plasma Arc, Combustion |
-| Gust Wraith | EcoTech | 45 | 8 | 4 | Gust Slash, Smoke Veil, Wind Shear |
-| Turbine Beast | EcoTech | 90 | 13 | 8 | Turbine Kick, Tailwind, Heavy Blow |
-| Rogue Drone | AI | 55 | 9 | 5 | Algorithm Strike, Data Wipe, Predictive Aim |
-| Neural Phantom | AI | 95 | 11 | 6 | Neural Surge, Recursive Strike, Hotfix |
-| Static Fiend | Grid | 65 | 8 | 6 | Blackout Strike, Static Field, Arc Flash |
-| Overload Titan | Grid | 130 | 14 | 10 | Power Surge, Capacitor, Overvoltage |
+| Fission Hound | Nuclear | 40 | 8 | 4 | Strike, Poison Dart, Fission Burst |
+| Reactor Wraith | Nuclear | 65 | 12 | 6 | Radiation Pulse, Containment Breach, Guard |
+| Nano Swarm | NewMaterial | 35 | 7 | 5 | Double Strike, Disarm, Nano Blade |
+| Carbon Golem | NewMaterial | 80 | 10 | 14 | Composite Shield, Graphene Edge, Heavy Blow |
+| Cryo Crawler | Hydrogen | 40 | 9 | 5 | Cryo Jet, Disarm, Strike |
+| Plasma Leech | Hydrogen | 55 | 11 | 6 | Fuel Cell Blast, Plasma Arc, Combustion |
+| Gust Wraith | EcoTech | 30 | 8 | 4 | Gust Slash, Smoke Veil, Wind Shear |
+| Turbine Beast | EcoTech | 60 | 13 | 8 | Turbine Kick, Tailwind, Heavy Blow |
+| Rogue Drone | AI | 40 | 9 | 5 | Algorithm Strike, Data Wipe, Predictive Aim |
+| Neural Phantom | AI | 65 | 11 | 6 | Neural Surge, Recursive Strike, Hotfix |
+| Static Fiend | Grid | 45 | 8 | 6 | Blackout Strike, Static Field, Arc Flash |
+| Overload Titan | Grid | 90 | 14 | 10 | Power Surge, Capacitor, Overvoltage |
 
 ### Boss Monsters
 
 | Name | Track | HP | ATK | DEF | Cards |
 |------|------|---:|----:|----:|-------|
-| NEXUS Core | AI | 300 | 20 | 15 | Targeting Matrix, Stack Overflow, Encryption, Singularity |
-| Meltdown Titan | Nuclear | 280 | 22 | 12 | Irradiate, Critical Mass, Containment Breach, Detonate |
-| Storm Colossus | EcoTech | 260 | 18 | 14 | Wind Shear, Eye of Storm, Tornado, Gaia's Blessing |
+| NEXUS Core | AI | 200 | 20 | 15 | Targeting Matrix, Stack Overflow, Encryption, Singularity |
+| Meltdown Titan | Nuclear | 190 | 22 | 12 | Irradiate, Critical Mass, Containment Breach, Detonate |
+| Storm Colossus | EcoTech | 180 | 18 | 14 | Wind Shear, Eye of Storm, Tornado, Gaia's Blessing |
 
 ## Behavior Pattern
 

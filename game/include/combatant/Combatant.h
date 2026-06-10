@@ -32,6 +32,8 @@ public:
     void takeDamage(int amount);
     int  receiveDamage(int raw, EffectType type);
     void heal(int amount);
+    void permBoostAtk(int amount);
+    void permBoostDef(int amount);
 
     StatusTracker&       getStatus();
     const StatusTracker& getStatus() const;

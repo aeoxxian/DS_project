@@ -16,33 +16,69 @@ int  CardPool::size()    const { return cards.size(); }
 bool CardPool::isEmpty() const { return cards.isEmpty(); }
 
 void CardPool::print() const {
-    std::cout << "=== Card Pool (" << cards.size() << " cards) ===\n";
+    std::cout << "  Deck (" << cards.size() << " cards):\n";
     auto* node = cards.getHead();
     int i = 0;
     while (node) {
-        std::cout << "  " << i++ << ". "; node->value.print(); std::cout << "\n";
+        std::cout << "  " << i++ << ". " << node->value.getName()
+                  << "  " << node->value.getDescription() << "\n";
         node = node->next;
     }
 }
 
-// ── Hand ──────────────────────────────────────────────────────────────────────
+// ── Hand (배열 기반, 슬롯 인덱스 안정) ──────────────────────────────────────
 
-bool Hand::addCard(const Card& card) { cards.pushBack(card); return true; }
+Hand::Hand() : slotCount(0), activeCount(0) {
+    for (int i = 0; i < MAX_HAND_SIZE; ++i) active[i] = false;
+}
 
-bool Hand::removeCard(int index, Card& out) { return cards.removeAt(index, out); }
+bool Hand::addCard(const Card& card) {
+    if (slotCount >= MAX_HAND_SIZE) return false;
+    slots[slotCount] = card;
+    active[slotCount] = true;
+    ++slotCount;
+    ++activeCount;
+    return true;
+}
 
-bool Hand::peekCard(int index, Card& out) const { return cards.getAt(index, out); }
+bool Hand::removeCard(int index, Card& out) {
+    if (index < 0 || index >= slotCount || !active[index]) return false;
+    out = slots[index];
+    active[index] = false;
+    --activeCount;
+    return true;
+}
 
-int  Hand::size()    const { return cards.size(); }
-bool Hand::isEmpty() const { return cards.isEmpty(); }
-void Hand::clear()         { cards.clear(); }
+bool Hand::restoreCard(int index, const Card& card) {
+    if (index < 0 || index >= slotCount) return false;
+    slots[index] = card;
+    active[index] = true;
+    ++activeCount;
+    return true;
+}
+
+bool Hand::peekCard(int index, Card& out) const {
+    if (index < 0 || index >= slotCount || !active[index]) return false;
+    out = slots[index];
+    return true;
+}
+
+int  Hand::size()      const { return activeCount; }
+int  Hand::slotSize()  const { return slotCount; }
+bool Hand::isEmpty()   const { return activeCount == 0; }
+
+void Hand::clear() {
+    for (int i = 0; i < slotCount; ++i) active[i] = false;
+    slotCount   = 0;
+    activeCount = 0;
+}
 
 void Hand::print() const {
-    std::cout << "=== 손패 (" << cards.size() << "장) ===\n";
-    auto* node = cards.getHead();
-    int i = 0;
-    while (node) {
-        std::cout << "  " << i++ << ". "; node->value.print(); std::cout << "\n";
-        node = node->next;
+    std::cout << "  Hand (" << activeCount << " cards):\n";
+    for (int i = 0; i < slotCount; ++i) {
+        if (!active[i]) continue;
+        std::cout << "  " << i << ". ";
+        slots[i].print();
+        std::cout << "\n";
     }
 }

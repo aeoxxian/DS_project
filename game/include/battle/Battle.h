@@ -12,7 +12,7 @@
 
 class Battle {
 private:
-    struct AssignRecord { int ci; Card card; };
+    struct AssignRecord { int ci; int slotIdx; Card card; };
 
     BattleCharacter* party[MAX_CHARACTERS];
     int      partySize;

@@ -18,19 +18,25 @@ public:
     void print()   const;
 };
 
-// 손패 — 매 턴 드로우/사용으로 변경되는 임시 카드 묶음
+// 손패 — 배열 기반 고정 슬롯 (인덱스 안정: 카드 사용 시 슬롯 번호 유지)
 class Hand {
 private:
-    LinkedList<Card> cards;
+    Card slots[MAX_HAND_SIZE];
+    bool active[MAX_HAND_SIZE];
+    int  slotCount;   // 할당된 슬롯 수 (addCard 시 증가)
+    int  activeCount; // 현재 활성(미사용) 카드 수
 
 public:
+    Hand();
     bool addCard(const Card& card);
     bool removeCard(int index, Card& out);
+    bool restoreCard(int index, const Card& card);  // undo용: 원래 슬롯에 복원
     bool peekCard(int index, Card& out) const;
-    int  size()    const;
-    bool isEmpty() const;
+    int  size()      const;  // 활성 카드 수
+    int  slotSize()  const;  // 할당된 슬롯 수 (표시용 반복 범위)
+    bool isEmpty()   const;
     void clear();
-    void print()   const;
+    void print()     const;
 };
 
 #endif

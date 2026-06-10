@@ -196,8 +196,8 @@ void registerAllCards() {
     { Card c(201, "나노 블레이드",    "나노 날로  9 데미지를 가합니다. [보너스] 약화 25%(1턴)", Track::NewMaterial);
       c.addEffect(attack(9));
       c.addBonusEffect(weaken(1)); reg.registerCard(c); }
-    { Card c(202, "복합 방패",       "경화 소재로 방어막 10을 생성합니다.(1턴) [보너스] 방어력 3 증가(1턴)", Track::NewMaterial);
-      c.addEffect(defense(10, 1));
+    { Card c(202, "복합 방패",       "경화 소재로 파티 방어막 10을 부여합니다.(1턴) [보너스] 방어력 3 증가(1턴)", Track::NewMaterial);
+      c.addEffect(defense(10, 1, EffectTarget::Party));
       c.addBonusEffect(defUp(3, 1)); reg.registerCard(c); }
     { Card c(203, "폴리머 타격",     "유연한 소재로  7 데미지와 HP 2를 회복합니다. [보너스]  4 데미지", Track::NewMaterial);
       c.addEffect(attack(7));
@@ -206,18 +206,18 @@ void registerAllCards() {
     { Card c(204, "보호막 직조",     "파티 전체에 방어막 5를 부여합니다.(1턴) [보너스] 파티 방어력 2 증가(1턴)", Track::NewMaterial);
       c.addEffect(defense(5, 1, EffectTarget::Party));
       c.addBonusEffect(Effect(EffectType::Buff, 2, 1, ST_DEF_UP, EffectTarget::Party)); reg.registerCard(c); }
-    { Card c(205, "강화 장갑",       "강화 장갑으로 방어막 12를 생성합니다.(1턴) [보너스] 방어막 8 추가(1턴)", Track::NewMaterial);
-      c.addEffect(defense(12, 1));
-      c.addBonusEffect(defense(8, 1)); reg.registerCard(c); }
-    { Card c(206, "반응 장갑",       "반응 장갑으로 방어막 6을 생성하고 반격합니다.(1턴) [보너스]  5 데미지", Track::NewMaterial);
-      c.addEffect(defense(6, 1));
+    { Card c(205, "강화 장갑",       "강화 장갑으로 파티 방어막 12를 부여합니다.(1턴) [보너스] 파티 방어막 8 추가(1턴)", Track::NewMaterial);
+      c.addEffect(defense(12, 1, EffectTarget::Party));
+      c.addBonusEffect(defense(8, 1, EffectTarget::Party)); reg.registerCard(c); }
+    { Card c(206, "반응 장갑",       "반응 장갑으로 파티 방어막 6을 부여하고 반격합니다.(1턴) [보너스]  5 데미지", Track::NewMaterial);
+      c.addEffect(defense(6, 1, EffectTarget::Party));
       c.addBonusEffect(attack(5)); reg.registerCard(c); }
-    { Card c(207, "탄소 격자",       "탄소 격자 강화로 방어력을 4 높입니다.(1턴) [보너스] 방어막 5(1턴)", Track::NewMaterial);
+    { Card c(207, "탄소 격자",       "탄소 격자 강화로 방어력을 4 높입니다.(1턴) [보너스] 파티 방어막 5(1턴)", Track::NewMaterial);
       c.addEffect(defUp(4, 1));
-      c.addBonusEffect(defense(5, 1)); reg.registerCard(c); }
-    { Card c(208, "자가 복원",       "자가 복원으로 HP 8 회복, 방어막 4를 생성합니다.(1턴) [보너스] HP 4 추가 회복", Track::NewMaterial);
+      c.addBonusEffect(defense(5, 1, EffectTarget::Party)); reg.registerCard(c); }
+    { Card c(208, "자가 복원",       "자가 복원으로 HP 8 회복, 파티 방어막 4를 부여합니다.(1턴) [보너스] HP 4 추가 회복", Track::NewMaterial);
       c.addEffect(heal(8));
-      c.addEffect(defense(4, 1));
+      c.addEffect(defense(4, 1, EffectTarget::Party));
       c.addBonusEffect(heal(4)); reg.registerCard(c); }
     { Card c(209, "그래핀 칼날",     "그래핀 날로  10 데미지를 가합니다. [보너스] 취약 50%(1턴)", Track::NewMaterial);
       c.addEffect(attack(10));
@@ -225,18 +225,18 @@ void registerAllCards() {
     { Card c(210, "요새",           "요새화로 파티 전체에 방어막 8을 부여합니다.(1턴) [보너스] 파티 방어력 2 증가(1턴)", Track::NewMaterial);
       c.addEffect(defense(8, 1, EffectTarget::Party));
       c.addBonusEffect(Effect(EffectType::Buff, 2, 1, ST_DEF_UP, EffectTarget::Party)); reg.registerCard(c); }
-    { Card c(211, "충격 흡수",       "충격 흡수 자세로 방어막 10을 생성합니다.(1턴) [보너스] 방어막 5 추가(1턴)", Track::NewMaterial);
-      c.addEffect(defense(10, 1));
-      c.addBonusEffect(defense(5, 1)); reg.registerCard(c); }
-    { Card c(212, "형상기억 합금",    "형상기억 합금으로 HP 6 회복, 방어막 6을 생성합니다.(1턴)", Track::NewMaterial);
+    { Card c(211, "충격 흡수",       "충격 흡수 자세로 파티 방어막 10을 부여합니다.(1턴) [보너스] 파티 방어막 5 추가(1턴)", Track::NewMaterial);
+      c.addEffect(defense(10, 1, EffectTarget::Party));
+      c.addBonusEffect(defense(5, 1, EffectTarget::Party)); reg.registerCard(c); }
+    { Card c(212, "형상기억 합금",    "형상기억 합금으로 HP 6 회복, 파티 방어막 6을 부여합니다.(1턴)", Track::NewMaterial);
       c.addEffect(heal(6));
-      c.addEffect(defense(6, 1)); reg.registerCard(c); }
-    { Card c(213, "인장 타격",       "인장 강도로  8 데미지와 방어막 5를 생성합니다.(1턴) [보너스]  3 데미지", Track::NewMaterial);
+      c.addEffect(defense(6, 1, EffectTarget::Party)); reg.registerCard(c); }
+    { Card c(213, "인장 타격",       "인장 강도로  8 데미지와 파티 방어막 5를 부여합니다.(1턴) [보너스]  3 데미지", Track::NewMaterial);
       c.addEffect(attack(8));
-      c.addEffect(defense(5, 1));
+      c.addEffect(defense(5, 1, EffectTarget::Party));
       c.addBonusEffect(attack(3)); reg.registerCard(c); }
-    { Card c(214, "소모형 장갑",     "소모형 장갑으로 방어막 15를 생성합니다.(1턴) [보너스] 방어력 3 증가(1턴)", Track::NewMaterial);
-      c.addEffect(defense(15, 1));
+    { Card c(214, "소모형 장갑",     "소모형 장갑으로 파티 방어막 15를 부여합니다.(1턴) [보너스] 방어력 3 증가(1턴)", Track::NewMaterial);
+      c.addEffect(defense(15, 1, EffectTarget::Party));
       c.addBonusEffect(defUp(3, 1)); reg.registerCard(c); }
     { Card c(215, "나노직 보호",     "나노직 보호막으로 파티에 방어막 4를 부여합니다.(1턴) [보너스] 파티 HP 3 회복", Track::NewMaterial);
       c.addEffect(defense(4, 1, EffectTarget::Party));
@@ -244,16 +244,16 @@ void registerAllCards() {
     { Card c(216, "탄성 회복",       "탄성 회복으로 방어력을 5 높이고 HP 5를 회복합니다. [보너스] HP 5 추가 회복", Track::NewMaterial);
       c.addEffect(defUp(5, 1));
       c.addBonusEffect(heal(5)); reg.registerCard(c); }
-    { Card c(217, "반격 행렬",       "반격 행렬로 방어막 8(1턴)과  6 데미지를 가합니다. [보너스]  4 데미지", Track::NewMaterial);
-      c.addEffect(defense(8, 1));
+    { Card c(217, "반격 행렬",       "반격 행렬로 파티 방어막 8(1턴)과  6 데미지를 가합니다. [보너스]  4 데미지", Track::NewMaterial);
+      c.addEffect(defense(8, 1, EffectTarget::Party));
       c.addEffect(attack(6));
       c.addBonusEffect(attack(4)); reg.registerCard(c); }
-    { Card c(218, "진영 보강",       "진영 보강으로 방어막 7(1턴)과 방어력 2 증가(1턴)를 얻습니다. [보너스] 파티 방어막 5(1턴)", Track::NewMaterial);
-      c.addEffect(defense(7, 1));
+    { Card c(218, "진영 보강",       "진영 보강으로 파티 방어막 7(1턴)과 방어력 2 증가(1턴)를 얻습니다. [보너스] 파티 방어막 5(1턴)", Track::NewMaterial);
+      c.addEffect(defense(7, 1, EffectTarget::Party));
       c.addEffect(defUp(2, 1));
       c.addBonusEffect(defense(5, 1, EffectTarget::Party)); reg.registerCard(c); }
-    { Card c(219, "적응형 메시",     "적응형 메시로 방어막 6(1턴)을 생성하고 드로우 1장을 추가합니다. [보너스] 방어력 2 증가(1턴)", Track::NewMaterial);
-      c.addEffect(defense(6, 1));
+    { Card c(219, "적응형 메시",     "적응형 메시로 파티 방어막 6(1턴)을 부여하고 드로우 1장을 추가합니다. [보너스] 방어력 2 증가(1턴)", Track::NewMaterial);
+      c.addEffect(defense(6, 1, EffectTarget::Party));
       c.addEffect(draw(1));
       c.addBonusEffect(defUp(2, 1)); reg.registerCard(c); }
     { Card c(220, "불침투",         "[시그니처] 파티 방어막 10(1턴)과 공격 1회 차단을 부여합니다. [보너스] 파티 방어력 3 증가(1턴)", Track::NewMaterial);

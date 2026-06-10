@@ -36,6 +36,9 @@ int Combatant::receiveDamage(int raw, EffectType type) {
 
 void Combatant::heal(int amount) { HP = (HP + amount > maxHP) ? maxHP : HP + amount; }
 
+void Combatant::permBoostAtk(int amount) { attackPower += amount; }
+void Combatant::permBoostDef(int amount) { defend      += amount; }
+
 StatusTracker&       Combatant::getStatus()       { return status; }
 const StatusTracker& Combatant::getStatus() const  { return status; }
 void Combatant::tickStatus()          { status.tick(); }
