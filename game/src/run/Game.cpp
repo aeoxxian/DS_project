@@ -8,6 +8,7 @@
 #include "ds/Sorting.h"
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 #include <cstdlib>
 
 Game::Game() : alive(true), gold(0), battleLogCount(0) {
@@ -17,31 +18,49 @@ Game::Game() : alive(true), gold(0), battleLogCount(0) {
 }
 
 void Game::selectParty() {
+    static const int W = 58;
     CharacterRoster& roster = CharacterRoster::instance();
 
     UI::clear();
     std::cout << "\n";
-    std::cout << "  ══════════════════ 캐릭터 선택 ══════════════════\n";
-    std::cout << "  3명을 차례로 선택하세요.\n\n";
+    UI::boxTop(W);
+    UI::boxCenter("D U N G E O N   E X P L O R E R", W);
+    UI::boxMid(W);
+    UI::boxCenter("파티 구성  —  3명을 차례로 선택하세요", W);
+    UI::boxDiv(W);
 
     if (roster.size() == 0) {
-        std::cout << "  (등록된 캐릭터 없음 — CharacterRoster.cpp에 추가하세요)\n";
+        UI::boxLeft("(등록된 캐릭터 없음)", W);
     } else {
-        std::cout << "  번호  이름                트랙           HP   ATK  DEF\n";
-        std::cout << "  ─────────────────────────────────────────────────────\n";
+        // header row
+        std::ostringstream hdr;
+        hdr << std::left << std::setw(5) << "번호"
+            << std::setw(18) << "이름"
+            << std::setw(14) << "트랙"
+            << std::right
+            << std::setw(5) << "HP"
+            << std::setw(5) << "ATK"
+            << std::setw(5) << "DEF";
+        UI::boxLeft(hdr.str(), W);
+        UI::boxDiv(W);
+
         for (int i = 0; i < roster.size(); ++i) {
             CharacterDef def;
             roster.getAt(i, def);
-            std::cout << "  [" << i << "]   "
-                      << std::left  << std::setw(20) << def.name
-                      << std::setw(15) << trackToString(def.track)
-                      << std::right
-                      << std::setw(4) << def.baseHP
-                      << std::setw(5) << def.baseAttack
-                      << std::setw(5) << def.baseDefend << "\n";
+            std::ostringstream row;
+            row << "[" << i << "]  "
+                << std::left  << std::setw(18) << def.name
+                << std::setw(14) << trackToString(def.track)
+                << std::right
+                << std::setw(5) << def.baseHP
+                << std::setw(5) << def.baseAttack
+                << std::setw(5) << def.baseDefend;
+            UI::boxLeft(row.str(), W);
         }
-        std::cout << "\n";
     }
+
+    UI::boxBot(W);
+    std::cout << "\n";
 
     for (int i = 0; i < MAX_CHARACTERS; ++i) {
         std::cout << "  " << (i + 1) << "번째 캐릭터 > ";
@@ -57,14 +76,19 @@ void Game::selectParty() {
             if (roster.size() > 0) roster.getAt(0, def);
         }
         party[i] = BattleCharacter(def);
-        std::cout << "  → " << def.name << " [" << trackToString(def.track) << "] 선택\n";
+        UI::typewrite("▷  " + def.name + "  [" + trackToString(def.track) + "]  선택", 12);
     }
 
-    std::cout << "\n  파티: ";
+    std::cout << "\n";
+    UI::boxTop(W);
+    UI::boxCenter("★  파티 구성 완료  ★", W);
+    UI::boxDiv(W);
     for (int i = 0; i < MAX_CHARACTERS; ++i) {
-        if (i > 0) std::cout << "  /  ";
-        std::cout << party[i].getName() << " [" << trackToString(party[i].getTrack()) << "]";
+        std::string row = "  " + std::to_string(i + 1) + ".  " + party[i].getName()
+                        + "  [" + trackToString(party[i].getTrack()) + "]";
+        UI::boxLeft(row, W);
     }
+    UI::boxBot(W);
     std::cout << "\n";
     UI::pause();
 }
@@ -419,13 +443,7 @@ void Game::run() {
         std::getline(std::cin, cmd);
 
         if (cmd == "h" || cmd == "help") {
-            std::cout << "  w/a/s/d    — 이동 (위/왼쪽/아래/오른쪽)\n";
-            std::cout << "  u / undo   — 직전 방으로 되돌리기 (Stack 기반)\n";
-            std::cout << "  q          — 현재 위치 유지\n";
-            std::cout << "  g / graph  — 던전 그래프 구조 보기 (DFS)\n";
-            std::cout << "  l / look   — 맵 + 파티 상태 다시 보기\n";
-            std::cout << "  i / inv    — 인벤토리 확인\n";
-            std::cout << "  h / help   — 이 도움말\n";
+            UI::printHelp();
             UI::pause();
             continue;
         }

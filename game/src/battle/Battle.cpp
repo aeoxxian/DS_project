@@ -347,11 +347,7 @@ void Battle::assignPhase() {
         std::getline(std::cin, line);
 
         if (line == "h" || line == "help") {
-            std::cout << "  카드 번호 입력 → 해당 캐릭터에 배정 (필수)\n";
-            std::cout << "  switch         → 자리 바꾸기 (카드 대신, 이 캐릭터 행동 소비)\n";
-            std::cout << "  use            → 인벤토리 아이템 사용 (포션 등)\n";
-            std::cout << "  l / look       → 전투 상황 + 손패 다시 보기\n";
-            std::cout << "  u / undo       → 직전 배정 취소 후 해당 캐릭터로 돌아가기\n";
+            UI::printHelp();
             continue;
         }
         if (line == "l" || line == "look") {
@@ -472,7 +468,7 @@ void Battle::assignPhase() {
             continue;
         }
 
-        int idx = (line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : -1;
+        int idx = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : -1;
         Card selected;
         if (hand.removeCard(idx, selected)) {
             party[ci]->assignCard(selected);
@@ -581,7 +577,10 @@ void Battle::rewardPhase() {
 
     static const int W = 58;
     std::cout << "\n";
-    UI::header("전투 보상  ─  카드를 선택하세요", W);
+    UI::boxTop(W);
+    UI::boxCenter("전투 보상", W);
+    UI::boxCenter("카드를 선택하세요", W);
+    UI::boxBot(W);
 
     Card offers[BATTLE_REWARD_COUNT];
     int offered = 0;
@@ -592,10 +591,11 @@ void Battle::rewardPhase() {
 
     for (int i = 0; i < offered; ++i) {
         std::cout << "\n";
-        UI::line(W, '-');
-        std::cout << "  보상 " << (i + 1) << " / " << offered << "\n";
-        UI::line(W, '-');
-        std::cout << "  ";
+        UI::boxTop(W);
+        UI::boxCenter("보상  " + std::to_string(i + 1) + " / " + std::to_string(offered), W);
+        UI::boxDiv(W);
+        UI::boxLeft("", W);
+        std::cout << "  ║  ";
         offers[i].print();
         std::cout << "\n\n";
         std::cout << "  [a] 덱에 추가   [r] 기존 카드와 교체   [s] 스킵 > ";
@@ -605,7 +605,7 @@ void Battle::rewardPhase() {
 
         if (ch == 'a') {
             pool.addCard(offers[i]);
-            std::cout << "  → 덱에 추가됨. (총 " << pool.size() << "장)\n";
+            UI::typewrite("덱에 추가됨.  (총 " + std::to_string(pool.size()) + "장)", 12);
         } else if (ch == 'r') {
             std::cout << "\n";
             pool.print();
@@ -614,16 +614,16 @@ void Battle::rewardPhase() {
             int idx = (line.empty() || !(line[0] >= '0' && line[0] <= '9')) ? -1 : std::stoi(line);
             if (pool.removeCard(idx)) {
                 pool.addCard(offers[i]);
-                std::cout << "  → 교체 완료.\n";
+                UI::typewrite("교체 완료.", 12);
             } else {
-                std::cout << "  → 잘못된 번호 — 스킵.\n";
+                std::cout << "  잘못된 번호 — 스킵.\n";
             }
         } else {
-            std::cout << "  → 스킵.\n";
+            std::cout << "  스킵.\n";
         }
+        UI::boxBot(W);
     }
     std::cout << "\n";
-    UI::line(58, '=');
 }
 
 bool Battle::run() {
@@ -648,11 +648,14 @@ bool Battle::run() {
     }
 
     if (playerWon) {
-        UI::banner("VICTORY!  모든 적을 처치했습니다.");
+        UI::sleep(300);
+        UI::banner("★  V I C T O R Y  ★", "모든 적을 처치했습니다!");
         UI::pause();
         rewardPhase();
     } else {
-        UI::banner("DEFEATED...", "파티가 전멸했습니다.");
+        UI::sleep(400);
+        UI::banner("G A M E  O V E R", "파티가 전멸했습니다...");
+        UI::typewrite("쓰러진 동료들의 이름이 머릿속을 스쳐 지나간다.", 20);
         UI::pause();
     }
     return playerWon;

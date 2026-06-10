@@ -1,4 +1,5 @@
 #include "event/Event.h"
+#include "core/UI.h"
 #include <iostream>
 
 // ── EventChoice ───────────────────────────────────────────────────────────────
@@ -41,32 +42,48 @@ const EventChoice& Event::getChoice(int i) const {
 }
 
 int Event::run() const {
+    static const int W = 56;
     std::cout << "\n";
-    std::cout << "  ══════════════════════════════════════════════════\n";
-    std::cout << "  이벤트: " << title << "\n";
-    std::cout << "  ══════════════════════════════════════════════════\n";
-    std::cout << "  " << description << "\n\n";
+    UI::boxTop(W);
+    UI::boxCenter("!  이벤트  !", W);
+    UI::boxMid(W);
+    UI::boxCenter(title, W);
+    UI::boxDiv(W);
+    UI::boxEmpty(W);
+    UI::boxLeft(description, W);
+    UI::boxEmpty(W);
 
     if (forced || choiceCount <= 1) {
-        std::cout << "  [ 강제 이벤트 — 자동 진행 ]\n";
+        UI::boxDiv(W);
+        UI::boxCenter("[ 자동 진행 ]", W);
+        UI::boxEmpty(W);
         for (int i = 0; i < choices[0].getOutcomeCount(); ++i)
-            std::cout << "  → " << choices[0].getOutcome(i).note << "\n";
+            UI::boxLeft("→  " + choices[0].getOutcome(i).note, W);
+        UI::boxEmpty(W);
+        UI::boxBot(W);
+        std::cout << "\n";
         return 0;
     }
 
+    UI::boxDiv(W);
+    UI::boxEmpty(W);
     for (int i = 0; i < choiceCount; ++i)
-        std::cout << "  [" << i << "] " << choices[i].text << "\n";
-    std::cout << "\n  선택 > ";
+        UI::boxLeft("[" + std::to_string(i) + "]  " + choices[i].text, W);
+    UI::boxEmpty(W);
+    UI::boxBot(W);
 
+    std::cout << "\n  선택 > ";
     std::string line;
     std::getline(std::cin, line);
     int choice = (line.empty() || !(line[0] >= '0' && line[0] <= '9')) ? 0 : std::stoi(line);
     if (choice < 0 || choice >= choiceCount) choice = 0;
 
     const EventChoice& chosen = choices[choice];
-    std::cout << "  → [" << chosen.text << "] 선택\n";
+    std::cout << "\n";
+    UI::typewrite("▷  [" + chosen.text + "]", 15);
     for (int i = 0; i < chosen.getOutcomeCount(); ++i)
-        std::cout << "  → " << chosen.getOutcome(i).note << "\n";
+        UI::typewrite("→  " + chosen.getOutcome(i).note, 15);
+    std::cout << "\n";
 
     return choice;
 }
