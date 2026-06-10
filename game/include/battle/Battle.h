@@ -37,6 +37,7 @@ private:
     void rewardPhase();
 
     void applyEffect(const Effect& e, Combatant& source, int targetIdx, bool sourceIsPlayer);
+    void resolveCard(const Card& card, Combatant& source, bool sourceIsPlayer, int targetIdx);
 
     // 공격 헬퍼
     int  frontPartyIndex()                          const;

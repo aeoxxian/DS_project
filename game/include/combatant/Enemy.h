@@ -7,12 +7,12 @@
 
 class Enemy : public Combatant {
 private:
-    EnemySkill        skills[MAX_ENEMY_SKILLS];
-    int               skillCount;
-    int               patternIndex;
-    Queue<EnemySkill> intentQueue;
+    Card       cards[MAX_ENEMY_SKILLS];
+    int        cardCount;
+    int        patternIndex;
+    Queue<Card> intentQueue;
 
-    EnemySkill rollNextSkill();
+    Card rollNextCard();
 
 public:
     Enemy();
@@ -20,11 +20,8 @@ public:
     Enemy(const EnemyDef& def);
 
     void prepareIntent();
-    bool executeAndQueue(EnemySkill& out);
-    bool peekIntent(EnemySkill& out) const;
-
-    int               getSkillCount()     const;
-    const EnemySkill& getSkill(int index) const;
+    bool executeAndQueue(Card& out);
+    bool peekIntent(Card& out) const;
 
     void printStatus() const override;
 };

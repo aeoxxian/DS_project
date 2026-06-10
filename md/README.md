@@ -38,12 +38,12 @@ include/
 │   ├── Combatant.h       공통 베이스 (HP, 스탯, 상태이상)
 │   ├── CombatantDef.h    스탯 구조체
 │   ├── BattleCharacter.h 아군 캐릭터
-│   └── Enemy.h           적 (Queue<EnemySkill> 의도 관리)
+│   └── Enemy.h           적 (Queue<Card> 의도 관리)
 ├── battle/
 │   ├── Battle.h          전투 루프 (Stack<AssignRecord> 카드 배정 Undo)
 │   └── BattleStats.h     전투 통계
 ├── event/
-│   └── Event.h           이벤트 + 선택지 + 결과
+│   └── Event.h           이벤트 + 선택지 + 복수 결과
 ├── map/
 │   ├── Room.h            방 (DynamicArray<Item/Enemy>)
 │   ├── RunMap.h          트리형 런 맵 (Stack<int> 이동 Undo)
@@ -98,18 +98,17 @@ src/
 
 ### 전투 카드 배정
 
-- 매 턴 손패 5장 드로우, 캐릭터 3명에게 각 1장씩 **필수** 배정 (스킵 불가)
-- 손패가 소진된 경우에만 해당 캐릭터 자동 패스
-- `★전열` 캐릭터만 적의 공격을 받음 — `자리 바꾸기` 카드로 포지션 교체 가능
+매 턴 손패 5장 드로우, 캐릭터 3명에게 각 1장씩 배정. 손패 소진 시 자동 패스.
+
+`★전열` 캐릭터만 적의 공격을 받음. `switch` 명령으로 카드 대신 자리 바꾸기 선택 가능 (해당 캐릭터 행동 소비).
 
 | 입력 | 동작 |
 |------|------|
 | `0`~`n` | 해당 인덱스 카드를 현재 캐릭터에 배정 |
-| `u` / `undo` | 직전 배정 취소 → 카드 손패 복귀 → 해당 캐릭터로 돌아가기 |
+| `switch` | 카드 대신 자리 바꾸기 — 두 캐릭터 인덱스 입력 (예: `0 1`) |
+| `u` / `undo` | 직전 배정 취소 → 카드 손패 복귀 (자리 바꾸기 이후엔 불가) |
 | `l` / `look` | 전투 상황 + 손패 재출력 |
 | `h` / `help` | 명령어 목록 |
-
-> `자리 바꾸기` 카드 사용 시 "0 1" 형식으로 교체할 두 캐릭터 인덱스를 입력합니다.
 
 ---
 
@@ -120,24 +119,19 @@ src/
 ```cpp
 using namespace Effects;
 
-// 공용 카드 — Track::None, 보너스 이펙트 없음
+// 공용 카드
 Card c(id, "이름", "설명");
 c.addEffect(attack(5));
 reg.registerCard(c);
 
-// 트랙 카드 — 해당 트랙 지정, 트랙 일치 시 bonusEffect 추가 발동
+// 트랙 카드 — 트랙 일치 시 bonusEffect 추가 발동
 Card c(id, "이름", "설명", Track::Grid);
 c.addEffect(attack(8));
 c.addBonusEffect(atkDown(3, 2));
 reg.registerCard(c);
-
-// 자리 바꾸기 카드 — Swap 이펙트 사용
-Card c(id, "이름", "설명");
-c.addEffect(swap());
-reg.registerCard(c);
 ```
 
-**이펙트 팩토리 함수 (Effect.h `namespace Effects`)**
+**이펙트 팩토리 함수 (`Effect.h` `namespace Effects`)**
 
 | 팩토리 | 설명 |
 |--------|------|
@@ -146,7 +140,7 @@ reg.registerCard(c);
 | `defense(v, d)` | 방어막 d턴 |
 | `heal(v)` / `heal(v, Party)` | 회복 |
 | `draw(v)` | 다음 턴 드로우 +v |
-| `swap()` | 자리 바꾸기 |
+| `swap()` | 강제 자리 바꾸기 (적 전용) |
 | `atkUp/defUp(v, d)` | 버프 |
 | `atkDown/defDown(v, d)` | 디버프 |
 | `poison/stun/weaken/confuse(d)` | 상태이상 |
@@ -160,30 +154,60 @@ r.registerCharacter(CharacterDef(1, "이름", "설명", 100, 10, 8, Track::AI));
 
 ### 몬스터 추가 (`src/registry/MonsterRegistry.cpp`)
 
+카드 이름으로 CardRegistry에서 직접 재사용:
+
 ```cpp
-// EnemyDef(이름, HP, ATK, DEF, Track, isBoss=false)
-EnemyDef def("이름", 80, 12, 5, Track::Hydrogen);
+EnemyDef def("이름", HP, ATK, DEF, Track);
+addCardByName(def, cards, "Strike");
+addCardByName(def, cards, "Poison Dart");
+addCardByName(def, cards, "강제 교대");
+reg.registerMonster(def);  // 패턴: Strike → Poison Dart → 강제 교대 → Strike → ...
+```
 
-Card skill1(0, "단일 공격", "물리 타격", Track::None, TargetScope::Single);
-skill1.addEffect(Effect(EffectType::Attack, 10));
-def.addSkill(skill1);
+보스:
 
-// 강제 자리 바꾸기 스킬 예시
-Card skill2(0, "강제 교대", "전열 혼란", Track::None, TargetScope::Single);
-skill2.addEffect(Effect(EffectType::Swap, 0));
-def.addSkill(skill2);
-
-reg.registerMonster(def);  // 패턴: skill1 → skill2 → skill1 → ...
+```cpp
+EnemyDef def("보스 이름", HP, ATK, DEF, Track, true);
+addCardByName(def, cards, "Detonate");
+// ...
+reg.registerMonster(def);
 ```
 
 ### 이벤트 추가 (`src/registry/EventRegistry.cpp`)
 
+선택 이벤트 (복수 효과 가능):
+
 ```cpp
-Event e(id, "제목", "설명 텍스트");
-e.addChoice(EventChoice("선택지 A", EventOutcome(OutcomeType::HealParty, 10, "체력을 회복했다.")));
-e.addChoice(EventChoice("선택지 B", EventOutcome(OutcomeType::Nothing,   0,  "아무 일도 없었다.")));
+Event e(id, "제목", "설명");
+EventChoice c1("선택지 A");
+c1.addOutcome({OutcomeType::AddCard,    1, "카드 1장 획득"});
+c1.addOutcome({OutcomeType::DamageParty, 4, "파티 피해 4"});
+e.addChoice(c1);
 reg.registerEvent(e);
 ```
+
+강제 이벤트:
+
+```cpp
+Event e(id, "제목", "설명", true);  // true = forced
+EventChoice eff;
+eff.addOutcome({OutcomeType::GainGold, 1, "전리품 +1"});
+e.addChoice(eff);
+reg.registerEvent(e);
+```
+
+**OutcomeType 목록**
+
+| 타입 | 효과 |
+|------|------|
+| `HealParty` | 파티 전체 HP 회복 |
+| `DamageParty` | 파티 전체 피해 |
+| `AddCard` | 무작위 카드 획득 |
+| `RemoveSelectedCard` | 플레이어가 선택한 카드 제거 |
+| `GainGold` | 전리품 획득 |
+| `LoseGold` | 전리품 감소 |
+| `OpenShop` | 수상한 상점 오픈 |
+| `Nothing` | 효과 없음 |
 
 ---
 
@@ -195,7 +219,7 @@ STL 컨테이너(`vector`, `list`, `stack`, `queue`, `map` 등) 사용 금지.
 |----------|------|-----------|-------------|------|
 | LinkedList | `ds/LinkedList.h` | 헤더 전용 | CardPool, Hand, Inventory | ✅ 완료 |
 | Stack | `ds/Stack.h` | 헤더 전용 | RunMap 이동 Undo, Battle 카드 배정 Undo, DungeonGraph DFS | ✅ 완료 |
-| Queue | `ds/Queue.h` | 헤더 전용 | Enemy 의도 패턴 순환 | ✅ 완료 |
+| Queue | `ds/Queue.h` | 헤더 전용 | Enemy 의도 패턴 순환 (`Queue<Card>`) | ✅ 완료 |
 | DynamicArray | `ds/DynamicArray.h` | 헤더 전용 | Room 내 아이템/적 목록 | ✅ 완료 |
 | ScoreTree (BST) | `ds/ScoreTree.h` | `src/ds/ScoreTree.cpp` | 전투 효율 랭킹 | ✅ 완료 |
 | Graph (DungeonGraph) | `map/DungeonGraph.h` | `src/map/DungeonGraph.cpp` | 던전 방 연결 + DFS 탐색 | ✅ 완료 |
@@ -239,7 +263,7 @@ STL 컨테이너(`vector`, `list`, `stack`, `queue`, `map` 등) 사용 금지.
 | printDescending (역중위) | O(n) | 모든 노드 방문 |
 | 공간 복잡도 | O(n) | 노드 수만큼 동적 할당 |
 
-중복 점수 처리: 동점은 오른쪽 서브트리에 삽입 (중복 허용).
+중복 점수 처리: 동점은 오른쪽 서브트리에 삽입 (중복 허용, 역중위 순회 시 동점끼리 연속 출력).
 
 ### DungeonGraph (인접 배열)
 
@@ -264,9 +288,9 @@ STL 컨테이너(`vector`, `list`, `stack`, `queue`, `map` 등) 사용 금지.
 
 ### 콘텐츠 등록
 
-- [ ] **캐릭터 이름/스탯 확정** (`src/registry/CharacterRoster.cpp`) — 현재 "캐릭터1/2/3" 플레이스홀더, 팀원별 이름·트랙·스탯으로 교체
-- [ ] **몬스터 등록 검토** (`src/registry/MonsterRegistry.cpp`) — 보스 포함 충분한 수
-- [ ] **이벤트 등록 검토** (`src/registry/EventRegistry.cpp`) — 최소 1개 이상
+- [ ] **캐릭터 이름/스탯 확정** (`src/registry/CharacterRoster.cpp`) — 현재 플레이스홀더, 팀원별 이름·트랙·스탯으로 교체
+- [x] **몬스터 카드 패턴 등록** — 일반 12종 + 보스 3종 모두 완료
+- [x] **이벤트 등록** — 6개 이벤트 등록 완료 (강제 3 + 선택 3)
 
 ### 제출 문서
 
@@ -284,7 +308,7 @@ STL 컨테이너(`vector`, `list`, `stack`, `queue`, `map` 등) 사용 금지.
 | 항목 | 배점 | 현재 상태 |
 |------|------|-----------|
 | 자료구조 정확성 | 30 | LinkedList·Stack·Queue·DynamicArray·BST·Graph·Sorting 전부 구현 완료 |
-| 자료구조 통합 | 25 | CardPool·Hand·Inventory(LinkedList), moveHistory·assignStack(Stack), Enemy intent(Queue), DFS(Stack), BattleStats 정렬, ScoreTree 랭킹 모두 실제 게임에서 사용 |
-| 완성도 & 안정성 | 20 | 빌드 성공, 입력 검증, help/look/undo(맵·전투), 인벤토리, 아이템 픽업, 카드 필수 배정 모두 구현 |
-| 코드 품질 & 모듈성 | 15 | 서브디렉터리 구조, 명확한 클래스 분리. 양호 |
+| 자료구조 통합 | 25 | CardPool·Hand·Inventory(LinkedList), moveHistory·assignStack(Stack), Enemy intent Queue\<Card\>, DFS(Stack), BattleStats 정렬, ScoreTree 랭킹 모두 실제 게임에서 사용 |
+| 완성도 & 안정성 | 20 | 빌드 성공, 입력 검증, help/look/undo(맵·전투), 인벤토리, 카드 배정, 이벤트 6종, 몬스터 15종 모두 구현 |
+| 코드 품질 & 모듈성 | 15 | 서브디렉터리 구조, 명확한 클래스 분리, 플레이어/몬스터 공통 resolveCard() 사용 |
 | 창의적 확장 & 발표 | 10 | 트랙 시스템, 카드 배틀 구조 독창적. 발표 준비 필요 |

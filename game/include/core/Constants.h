@@ -34,7 +34,8 @@ static const int MAX_MONSTER_REGISTRY_SIZE = 128;
 static const int MAX_EVENT_REGISTRY        = 64;
 
 // ── Event ─────────────────────────────────────────────────────────────────────
-static const int MAX_CHOICES = 6;
+static const int MAX_CHOICES              = 6;
+static const int MAX_OUTCOMES_PER_CHOICE  = 4;
 
 // ── Status effects ────────────────────────────────────────────────────────────
 static const int MAX_STATUS_EFFECTS = 24;

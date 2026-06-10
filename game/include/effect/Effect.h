@@ -80,8 +80,8 @@ namespace Effects {
         { return Effect(EffectType::Debuff, v,  d, ST_CONFUSE,  t); }
     inline Effect stun       (int d, EffectTarget t = EffectTarget::Default)
         { return Effect(EffectType::Debuff, 1,  d, ST_PARALYZE, t); }
-    inline Effect vulnerable (int d)
-        { return Effect(EffectType::Debuff, 50, d, "vulnerable"); }
+    inline Effect vulnerable (int d, EffectTarget t = EffectTarget::Default)
+        { return Effect(EffectType::Debuff, 50, d, "vulnerable", t); }
 }
 
 #endif

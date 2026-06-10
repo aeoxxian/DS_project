@@ -5,26 +5,20 @@
 #include "card/Card.h"
 #include "core/Constants.h"
 
-struct EnemySkill {
-    Card card;
-    EnemySkill() {}
-    EnemySkill(const Card& c) : card(c) {}
-};
-
 struct EnemyDef : public CombatantDef {
-    bool       isBoss;
-    EnemySkill skills[MAX_ENEMY_SKILLS];
-    int        skillCount;
+    bool isBoss;
+    Card cards[MAX_ENEMY_SKILLS];
+    int  cardCount;
 
-    EnemyDef() : CombatantDef(), isBoss(false), skillCount(0) {}
+    EnemyDef() : CombatantDef(), isBoss(false), cardCount(0) {}
     EnemyDef(const std::string& name, int hp, int atk, int def,
              Track track, bool isBoss = false)
         : CombatantDef(name, hp, atk, def, track),
-          isBoss(isBoss), skillCount(0) {}
+          isBoss(isBoss), cardCount(0) {}
 
-    bool addSkill(const Card& c) {
-        if (skillCount >= MAX_ENEMY_SKILLS) return false;
-        skills[skillCount++] = EnemySkill(c);
+    bool addCard(const Card& c) {
+        if (cardCount >= MAX_ENEMY_SKILLS) return false;
+        cards[cardCount++] = c;
         return true;
     }
 };

@@ -80,7 +80,16 @@ void Battle::applyEffect(const Effect& e, Combatant& source, int targetIdx, bool
                 if (e.target == EffectTarget::AllEnemies) dealToAllEnemies(raw, e.type);
                 else                                      dealToEnemy(targetIdx, raw, e.type);
             } else {
-                dealToParty(raw, e.type);
+                if (e.target == EffectTarget::AllEnemies) {
+                    for (int ci = 0; ci < partySize; ++ci) {
+                        if (!party[ci]->isAlive()) continue;
+                        int actual = party[ci]->receiveDamage(raw, e.type);
+                        totalDamageTaken += actual;
+                        std::cout << "    -> " << party[ci]->getName() << " -" << actual << " HP\n";
+                    }
+                } else {
+                    dealToParty(raw, e.type);
+                }
             }
             break;
         }
@@ -97,11 +106,20 @@ void Battle::applyEffect(const Effect& e, Combatant& source, int targetIdx, bool
         case EffectType::Defense: {
             int dur = e.duration > 0 ? e.duration : 1;
             if (e.target == EffectTarget::Party) {
-                for (int ci = 0; ci < partySize; ++ci) {
-                    if (!party[ci]->isAlive()) continue;
-                    int sv = e.value + party[ci]->getDefend();
-                    party[ci]->getStatus().apply("shield", sv, dur);
-                    std::cout << "    -> " << party[ci]->getName() << " +" << sv << " shield\n";
+                if (sourceIsPlayer) {
+                    for (int ci = 0; ci < partySize; ++ci) {
+                        if (!party[ci]->isAlive()) continue;
+                        int sv = e.value + party[ci]->getDefend();
+                        party[ci]->getStatus().apply("shield", sv, dur);
+                        std::cout << "    -> " << party[ci]->getName() << " +" << sv << " shield\n";
+                    }
+                } else {
+                    for (int ei = 0; ei < enemyCount; ++ei) {
+                        if (!enemies[ei].isAlive()) continue;
+                        int sv = e.value + enemies[ei].getDefend();
+                        enemies[ei].getStatus().apply("shield", sv, dur);
+                        std::cout << "    -> " << enemies[ei].getName() << " +" << sv << " shield\n";
+                    }
                 }
             } else {
                 int sv = e.value + source.getDefend();
@@ -125,8 +143,13 @@ void Battle::applyEffect(const Effect& e, Combatant& source, int targetIdx, bool
                 }
             };
             if (e.target == EffectTarget::Party) {
-                for (int ci = 0; ci < partySize; ++ci)
-                    if (party[ci]->isAlive()) applyBuff(*party[ci]);
+                if (sourceIsPlayer) {
+                    for (int ci = 0; ci < partySize; ++ci)
+                        if (party[ci]->isAlive()) applyBuff(*party[ci]);
+                } else {
+                    for (int ei = 0; ei < enemyCount; ++ei)
+                        if (enemies[ei].isAlive()) applyBuff(enemies[ei]);
+                }
             } else {
                 applyBuff(source);
             }
@@ -201,111 +224,126 @@ void Battle::drawPhase() {
         Card card;
         if (pool.getCard(rand() % poolSize, card)) { hand.addCard(card); ++drawn; }
     }
-    std::cout << "  (" << drawn << "장 드로우)\n";
+    std::cout << "  드로우: " << drawn << "장  (손패 " << hand.size() << "장)\n";
 }
 
 void Battle::displayBattleState() const {
+    static const int W = 58;
     std::cout << "\n";
-    UI::line(56, '=');
-    std::cout << "  Turn " << turnNumber << "\n";
-    UI::line(56, '=');
+    UI::line(W, '=');
+    std::cout << "  TURN " << turnNumber << "\n";
+    UI::line(W, '=');
 
     // ── 파티 ────────────────────────────────────────────────────────────────
-    std::cout << "\n  [ 파티 ]\n";
+    UI::section("파티", W);
     int front = frontPartyIndex();
     for (int i = 0; i < partySize; ++i) {
         if (!party[i]->isAlive()) {
-            std::cout << "  [" << i << "]    " << party[i]->getName() << "  -- 사망\n";
+            std::cout << "  [" << i << "] ------  "
+                      << std::left << std::setw(8) << party[i]->getName()
+                      << "  사망\n";
             continue;
         }
         const Combatant& c = *party[i];
-        std::cout << "  [" << i << "] " << (i == front ? "★전열" : "  후열")
-                  << " " << std::left << std::setw(12) << c.getName()
-                  << " [" << std::setw(10) << trackToString(c.getTrack()) << "]"
+        bool isFront = (i == front);
+        std::cout << "  " << (isFront ? "★전열" : "  후열")
+                  << "  " << std::left << std::setw(8) << c.getName()
+                  << " [" << std::setw(11) << trackToString(c.getTrack()) << "]"
                   << "  HP " << std::right << std::setw(3) << c.getHP()
                   << "/" << std::setw(3) << c.getMaxHP()
                   << " " << UI::hpBar(c.getHP(), c.getMaxHP())
                   << "  ATK:" << std::setw(2) << c.getAttackPower()
-                  << " DEF:" << std::setw(2) << c.getDefend()
-                  << c.getStatus().toString()
-                  << "\n";
+                  << " DEF:" << std::setw(2) << c.getDefend();
+        std::string st = c.getStatus().toString();
+        if (!st.empty()) std::cout << " " << st;
+        std::cout << "\n";
     }
 
     // ── 적 ──────────────────────────────────────────────────────────────────
-    std::cout << "\n  [ 적 ]\n";
+    UI::section("적", W);
     for (int i = 0; i < enemyCount; ++i) {
         if (!enemies[i].isAlive()) continue;
         const Enemy& e = enemies[i];
-        EnemySkill intent;
-        std::string intentName = e.peekIntent(intent) ? intent.card.getName() : "???";
+        Card intent;
+        std::string intentName = e.peekIntent(intent) ? intent.getName() : "???";
         std::cout << "  [" << i << "] "
-                  << std::left << std::setw(14) << e.getName()
+                  << std::left << std::setw(16) << e.getName()
                   << " HP " << std::right << std::setw(3) << e.getHP()
                   << "/" << std::setw(3) << e.getMaxHP()
                   << " " << UI::hpBar(e.getHP(), e.getMaxHP())
                   << "  ATK:" << std::setw(2) << e.getAttackPower()
-                  << " DEF:" << std::setw(2) << e.getDefend()
-                  << e.getStatus().toString()
-                  << "  → [" << intentName << "]\n";
+                  << " DEF:" << std::setw(2) << e.getDefend();
+        std::string st = e.getStatus().toString();
+        if (!st.empty()) std::cout << " " << st;
+        std::cout << "   다음: " << intentName << "\n";
     }
 
     std::cout << "\n";
-    UI::line(56, '=');
+    UI::line(W, '=');
 }
 
 void Battle::printHand() const {
-    std::cout << "\n  [ 손패 " << hand.size() << "장 ]\n";
+    static const int W = 58;
+    UI::section("손패  (" + std::to_string(hand.size()) + "장)", W);
+
     for (int i = 0; i < hand.size(); ++i) {
         Card c;
         if (!hand.peekCard(i, c)) continue;
 
         bool trackMatch = false;
-        if (c.isTrackCard()) {
+        if (c.isTrackCard())
             for (int ci = 0; ci < partySize; ++ci)
                 if (party[ci]->isAlive() && party[ci]->hasTrack(c.getTrack()))
                     { trackMatch = true; break; }
-        }
 
-        std::cout << "  [" << i << "] " << std::left << std::setw(16) << c.getName();
+        std::cout << "  [" << i << "] "
+                  << std::left << std::setw(18) << c.getName();
+
         if (c.isTrackCard())
-            std::cout << "[" << std::setw(9) << trackToString(c.getTrack())
+            std::cout << " [" << std::setw(11) << trackToString(c.getTrack())
                       << (trackMatch ? "★]" : " ]");
         else
-            std::cout << "           ";
+            std::cout << "              ";
 
         for (int e = 0; e < c.getEffectCount(); ++e)
-            std::cout << " " << c.getEffect(e).toString();
+            std::cout << "  " << c.getEffect(e).toString();
         if (c.getBonusEffectCount() > 0) {
-            std::cout << " +[";
+            std::cout << "  +[";
             for (int e = 0; e < c.getBonusEffectCount(); ++e)
                 std::cout << c.getBonusEffect(e).toString();
             std::cout << "]";
         }
-        if (c.getTargetScope() == TargetScope::All) std::cout << " ALL";
+        if (c.getTargetScope() == TargetScope::All) std::cout << "  전체";
         std::cout << "\n";
     }
 }
 
 void Battle::assignPhase() {
+    static const int W = 58;
     assignStack.clear();
     printHand();
 
     std::cout << "\n";
-    UI::line(56, '-');
-    std::cout << "  카드 분배 (생존 " << livingPartyCount() << "명)\n";
-    std::cout << "  h=도움말  l=상황 다시보기  u=되돌리기\n\n";
+    UI::line(W, '-');
+    std::cout << "  카드 배정   생존 " << livingPartyCount() << "명";
+    std::cout << "   h=도움말  u=되돌리기  switch=자리바꾸기\n";
+    UI::line(W, '-');
+    std::cout << "\n";
 
     int ci = 0;
     while (ci < partySize) {
         if (!party[ci]->isAlive()) { ++ci; continue; }
         if (hand.isEmpty()) { ++ci; continue; }  // 손패 소진 시 자동 스킵
 
-        std::cout << "  [" << ci << "] " << party[ci]->getName() << " > ";
+        bool isFront = (ci == frontPartyIndex());
+        std::cout << "  " << (isFront ? "★" : "  ")
+                  << party[ci]->getName() << " > ";
         std::string line;
         std::getline(std::cin, line);
 
         if (line == "h" || line == "help") {
             std::cout << "  카드 번호 입력 → 해당 캐릭터에 배정 (필수)\n";
+            std::cout << "  switch         → 자리 바꾸기 (카드 대신, 이 캐릭터 행동 소비)\n";
             std::cout << "  l / look       → 전투 상황 + 손패 다시 보기\n";
             std::cout << "  u / undo       → 직전 배정 취소 후 해당 캐릭터로 돌아가기\n";
             continue;
@@ -334,6 +372,27 @@ void Battle::assignPhase() {
             continue;
         }
 
+        if (line == "switch") {
+            std::cout << "  자리 바꿀 두 번호 입력 (예: 0 1) > ";
+            std::string swapLine;
+            std::getline(std::cin, swapLine);
+            int a = -1, b = -1;
+            if (swapLine.size() >= 3 && swapLine[0] >= '0' && swapLine[2] >= '0') {
+                a = swapLine[0] - '0';
+                b = swapLine[2] - '0';
+            }
+            if (a >= 0 && a < partySize && b >= 0 && b < partySize && a != b) {
+                std::swap(party[a], party[b]);
+                std::cout << "  -> " << party[a]->getName() << " ↔ " << party[b]->getName()
+                          << " 자리 교환 (행동 소비)\n";
+                assignStack.clear();
+                ++ci;
+            } else {
+                std::cout << "  -> 잘못된 번호.\n";
+            }
+            continue;
+        }
+
         int idx = (line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : -1;
         Card selected;
         if (hand.removeCard(idx, selected)) {
@@ -351,50 +410,68 @@ void Battle::assignPhase() {
     std::cout << "\n";
 }
 
+void Battle::resolveCard(const Card& card, Combatant& source, bool sourceIsPlayer, int targetIdx) {
+    auto applyAll = [&](const Effect& eff) {
+        if (sourceIsPlayer && card.getTargetScope() == TargetScope::All) {
+            for (int ei = 0; ei < enemyCount; ++ei)
+                if (enemies[ei].isAlive())
+                    applyEffect(eff, source, ei, true);
+        } else {
+            applyEffect(eff, source, targetIdx, sourceIsPlayer);
+        }
+    };
+    for (int ef = 0; ef < card.getEffectCount(); ++ef)
+        applyAll(card.getEffect(ef));
+    if (card.isTrackCard() && source.hasTrack(card.getTrack()))
+        for (int ef = 0; ef < card.getBonusEffectCount(); ++ef)
+            applyAll(card.getBonusEffect(ef));
+}
+
 void Battle::executePhase() {
-    std::cout << "\n-- 캐릭터 행동 --\n";
+    static const int W = 58;
+    std::cout << "\n";
+    UI::line(W, '=');
+    std::cout << "  행동 처리\n";
+    UI::line(W, '=');
+
+    // 캐릭터 행동
+    std::cout << "\n  ─ 캐릭터 ──────────────────────────────────────────\n";
+    bool anyAction = false;
     for (int ci = 0; ci < partySize; ++ci) {
         if (!party[ci]->isAlive() || !party[ci]->hasCard()) continue;
+        anyAction = true;
         if (party[ci]->getStatus().isStunned()) {
-            std::cout << "  " << party[ci]->getName() << " 행동 불가 (stun)\n";
+            std::cout << "\n  " << party[ci]->getName() << "  스턴 — 행동 불가\n";
             party[ci]->clearAssignedCard();
             continue;
         }
         const Card& card = party[ci]->getAssignedCard();
         bool trackMatch  = card.isTrackCard() && party[ci]->hasTrack(card.getTrack());
-        std::cout << "  " << party[ci]->getName() << " → [" << card.getName() << "]";
-        if (trackMatch) std::cout << " ** Track Match!";
+        std::cout << "\n  " << party[ci]->getName()
+                  << "  → [" << card.getName() << "]";
+        if (trackMatch) std::cout << "   ★ Track Match!";
         std::cout << "\n";
-        auto applyAll = [&](const Effect& eff) {
-            if (card.getTargetScope() == TargetScope::All) {
-                for (int ei = 0; ei < enemyCount; ++ei)
-                    if (enemies[ei].isAlive())
-                        applyEffect(eff, *party[ci], ei, true);
-            } else {
-                applyEffect(eff, *party[ci], firstLivingEnemy(), true);
-            }
-        };
-        for (int ef = 0; ef < card.getEffectCount(); ++ef) applyAll(card.getEffect(ef));
-        if (trackMatch)
-            for (int ef = 0; ef < card.getBonusEffectCount(); ++ef) applyAll(card.getBonusEffect(ef));
+        resolveCard(card, *party[ci], true, firstLivingEnemy());
         party[ci]->clearAssignedCard();
     }
+    if (!anyAction) std::cout << "  (행동 없음)\n";
 
-    std::cout << "\n-- 적 행동 --\n";
+    // 적 행동
+    std::cout << "\n  ─ 적 ──────────────────────────────────────────────\n";
     for (int ei = 0; ei < enemyCount; ++ei) {
         if (!enemies[ei].isAlive()) continue;
         if (enemies[ei].getStatus().isStunned()) {
-            std::cout << "  " << enemies[ei].getName() << " 행동 불가 (stun)\n";
-            EnemySkill dummy; enemies[ei].executeAndQueue(dummy);
+            std::cout << "\n  " << enemies[ei].getName() << "  스턴 — 행동 불가\n";
+            Card dummy; enemies[ei].executeAndQueue(dummy);
             continue;
         }
-        EnemySkill sk;
-        if (!enemies[ei].executeAndQueue(sk)) continue;
-        const Card& card = sk.card;
-        std::cout << "  " << enemies[ei].getName() << " → [" << card.getName() << "]\n";
-        for (int ef = 0; ef < card.getEffectCount(); ++ef)
-            applyEffect(card.getEffect(ef), enemies[ei], -1, false);
+        Card card;
+        if (!enemies[ei].executeAndQueue(card)) continue;
+        std::cout << "\n  " << enemies[ei].getName()
+                  << "  → [" << card.getName() << "]\n";
+        resolveCard(card, enemies[ei], false, -1);
     }
+    std::cout << "\n";
 }
 
 void Battle::statusTickPhase() {
@@ -421,10 +498,9 @@ void Battle::rewardPhase() {
     CardRegistry& reg = CardRegistry::instance();
     if (reg.size() == 0) return;
 
+    static const int W = 58;
     std::cout << "\n";
-    UI::line(56, '=');
-    std::cout << "  전투 보상 — 카드를 선택하세요\n";
-    UI::line(56, '=');
+    UI::header("전투 보상  ─  카드를 선택하세요", W);
 
     Card offers[BATTLE_REWARD_COUNT];
     int offered = 0;
@@ -434,7 +510,10 @@ void Battle::rewardPhase() {
     }
 
     for (int i = 0; i < offered; ++i) {
-        std::cout << "\n  ─── 보상 " << (i + 1) << "/" << offered << " ─────────────────────────────\n";
+        std::cout << "\n";
+        UI::line(W, '-');
+        std::cout << "  보상 " << (i + 1) << " / " << offered << "\n";
+        UI::line(W, '-');
         std::cout << "  ";
         offers[i].print();
         std::cout << "\n\n";
@@ -463,7 +542,7 @@ void Battle::rewardPhase() {
         }
     }
     std::cout << "\n";
-    UI::line(56, '=');
+    UI::line(58, '=');
 }
 
 bool Battle::run() {
@@ -488,17 +567,11 @@ bool Battle::run() {
     }
 
     if (playerWon) {
-        std::cout << "\n";
-        UI::line(56, '=');
-        std::cout << "  Victory!\n";
-        UI::line(56, '=');
+        UI::banner("VICTORY!  모든 적을 처치했습니다.");
         UI::pause();
         rewardPhase();
     } else {
-        std::cout << "\n";
-        UI::line(56, '=');
-        std::cout << "  Defeated...\n";
-        UI::line(56, '=');
+        UI::banner("DEFEATED...", "파티가 전멸했습니다.");
         UI::pause();
     }
     return playerWon;

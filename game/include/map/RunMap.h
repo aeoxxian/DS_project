@@ -2,51 +2,43 @@
 #define RUN_MAP_H
 
 #include "core/Constants.h"
+#include "map/DungeonGraph.h"
 #include "ds/Stack.h"
 
-enum class RoomType { Battle, Event, Rest, Boss };
+enum class RoomType { Start, Battle, Event, Rest, Stairs, Boss };
 
-struct MapNode {
-    int  id, depth;
-    bool visited, isBoss;
-    int  children[MAX_CHILDREN];
-    int  childCount;
-
-    MapNode() : id(-1), depth(0), visited(false), isBoss(false), childCount(0) {
-        for (int i = 0; i < MAX_CHILDREN; ++i) children[i] = -1;
-    }
-    MapNode(int id, int depth, bool isBoss = false)
-        : id(id), depth(depth), visited(false), isBoss(isBoss), childCount(0) {
-        for (int i = 0; i < MAX_CHILDREN; ++i) children[i] = -1;
-    }
-    bool addChild(int nodeId) {
-        if (childCount >= MAX_CHILDREN) return false;
-        children[childCount++] = nodeId;
-        return true;
-    }
+struct Position {
+    int floor, row, col;
+    Position() : floor(0), row(0), col(0) {}
+    Position(int f, int r, int c) : floor(f), row(r), col(c) {}
 };
 
 class RunMap {
 private:
-    MapNode      nodes[MAX_MAP_NODES];
-    int          nodeCount;
-    int          currentNodeId;
-    RoomType     roomTypes[MAX_MAP_NODES];
-    Stack<int>   moveHistory;
+    static const RoomType LAYOUT[3][3][3];
 
-    int      addNode(int depth, bool isBoss = false);
-    void     buildMap();
-    RoomType rollRoomType() const;
+    DungeonGraph    graph;
+    bool            cleared[3][3][3];
+    Position        cur;
+    Stack<Position> history;
+
+    int  roomId(int f, int r, int c) const;
+    void buildGraph();
 
 public:
     RunMap();
 
-    RoomType advance();
+    bool     move(char dir);       // 'w'/'a'/'s'/'d' — 이동 성공 시 true
     bool     undoMove();
-    RoomType currentType() const;
-    int      currentId()   const;
-    bool     isAtBoss()    const;
-    void     printMap()    const;
+    bool     advanceFloor();       // 계단방에서 다음 층으로
+
+    RoomType currentType()  const;
+    bool     isAtBoss()     const;
+    bool     isAtStairs()   const;
+    bool     isCleared()    const;
+    void     clearCurrent();
+    void     printMap()     const;
+    void     printGraph()   const; // DungeonGraph DFS 출력 (루브릭용)
 };
 
 #endif

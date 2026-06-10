@@ -1,135 +1,175 @@
 #include "map/RunMap.h"
 #include "core/UI.h"
 #include <iostream>
-#include <cstdlib>
+#include <string>
 
-RunMap::RunMap() : nodeCount(0), currentNodeId(0) {
-    for (int i = 0; i < MAX_MAP_NODES; ++i) roomTypes[i] = RoomType::Battle;
-    buildMap();
-    roomTypes[currentNodeId] = rollRoomType();
-}
+// ── 고정 레이아웃 (PDF 명세) ──────────────────────────────────────────────────
+// [floor][row][col]   row 0 = 상단, col 0 = 좌측
 
-int RunMap::addNode(int depth, bool isBoss) {
-    if (nodeCount >= MAX_MAP_NODES) return -1;
-    int id = nodeCount;
-    nodes[nodeCount++] = MapNode(id, depth, isBoss);
-    return id;
-}
+const RoomType RunMap::LAYOUT[3][3][3] = {
+    // 1층
+    {{ RoomType::Start,  RoomType::Event,  RoomType::Battle },
+     { RoomType::Rest,   RoomType::Battle, RoomType::Battle },
+     { RoomType::Event,  RoomType::Rest,   RoomType::Stairs }},
+    // 2층
+    {{ RoomType::Start,  RoomType::Battle, RoomType::Event  },
+     { RoomType::Rest,   RoomType::Battle, RoomType::Battle },
+     { RoomType::Event,  RoomType::Battle, RoomType::Stairs }},
+    // 3층
+    {{ RoomType::Start,  RoomType::Event,  RoomType::Rest   },
+     { RoomType::Battle, RoomType::Battle, RoomType::Battle },
+     { RoomType::Event,  RoomType::Rest,   RoomType::Boss   }},
+};
 
-RoomType RunMap::rollRoomType() const {
-    int r = rand() % 10;
-    if (r < 5) return RoomType::Battle;
-    if (r < 8) return RoomType::Event;
-    return RoomType::Rest;
-}
+// ── 내부 유틸 ─────────────────────────────────────────────────────────────────
 
-void RunMap::buildMap() {
-    int layer[MAP_DEPTH + 1][3];
-    int layerSize[MAP_DEPTH + 1];
-    for (int i = 0; i <= MAP_DEPTH; ++i) layerSize[i] = 0;
-
-    layer[0][0] = addNode(0);
-    layerSize[0] = 1;
-
-    for (int d = 1; d < MAP_DEPTH; ++d) {
-        int count = 1 + rand() % 2;
-        layerSize[d] = count;
-        for (int i = 0; i < count; ++i)
-            layer[d][i] = addNode(d);
-    }
-
-    layer[MAP_DEPTH][0] = addNode(MAP_DEPTH, true);
-    layerSize[MAP_DEPTH] = 1;
-
-    for (int d = 0; d < MAP_DEPTH; ++d)
-        for (int p = 0; p < layerSize[d]; ++p)
-            for (int c = 0; c < layerSize[d + 1]; ++c)
-                nodes[layer[d][p]].addChild(layer[d + 1][c]);
-
-    currentNodeId = layer[0][0];
-}
+int RunMap::roomId(int f, int r, int c) const { return f * 9 + r * 3 + c; }
 
 static const char* roomLabel(RoomType t) {
     switch (t) {
-        case RoomType::Battle: return "전투  ";
-        case RoomType::Event:  return "이벤트";
-        case RoomType::Rest:   return "휴식  ";
-        case RoomType::Boss:   return "BOSS  ";
+        case RoomType::Start:   return "시작";
+        case RoomType::Battle:  return "전투";
+        case RoomType::Event:   return "이벤트";
+        case RoomType::Rest:    return "휴식";
+        case RoomType::Stairs:  return "계단";
+        case RoomType::Boss:    return "BOSS";
     }
-    return "??    ";
+    return "??";
 }
 
-bool RunMap::undoMove() {
-    int prevId;
-    if (!moveHistory.pop(prevId)) return false;
-    nodes[currentNodeId].visited = false;
-    currentNodeId = prevId;
+static const char* roomSymbol(RoomType t) {
+    switch (t) {
+        case RoomType::Start:  return " S ";
+        case RoomType::Battle: return " B ";
+        case RoomType::Event:  return " E ";
+        case RoomType::Rest:   return " R ";
+        case RoomType::Stairs: return " ^ ";  // ▲ 대체
+        case RoomType::Boss:   return " X ";
+    }
+    return " ? ";
+}
+
+// ── 그래프 구축 ───────────────────────────────────────────────────────────────
+
+void RunMap::buildGraph() {
+    // 방 27개 등록: floor*9 + row*3 + col 순서
+    for (int f = 0; f < 3; ++f)
+        for (int r = 0; r < 3; ++r)
+            for (int c = 0; c < 3; ++c)
+                graph.addRoom(
+                    std::string(roomLabel(LAYOUT[f][r][c])) +
+                    " F" + std::to_string(f + 1) +
+                    "(" + std::to_string(r) + "," + std::to_string(c) + ")",
+                    "");
+
+    // 층 내 상하좌우 연결 (단방향 × 2 = 양방향)
+    for (int f = 0; f < 3; ++f)
+        for (int r = 0; r < 3; ++r)
+            for (int c = 0; c < 3; ++c) {
+                int id = roomId(f, r, c);
+                if (r > 0) graph.connectRooms(id, Direction::North, roomId(f, r-1, c), false);
+                if (r < 2) graph.connectRooms(id, Direction::South, roomId(f, r+1, c), false);
+                if (c > 0) graph.connectRooms(id, Direction::West,  roomId(f, r, c-1), false);
+                if (c < 2) graph.connectRooms(id, Direction::East,  roomId(f, r, c+1), false);
+            }
+}
+
+// ── 생성자 ────────────────────────────────────────────────────────────────────
+
+RunMap::RunMap() : cur(0, 0, 0) {
+    for (int f = 0; f < 3; ++f)
+        for (int r = 0; r < 3; ++r)
+            for (int c = 0; c < 3; ++c)
+                cleared[f][r][c] = false;
+    cleared[0][0][0] = true;  // 1층 시작방은 방문 처리
+    buildGraph();
+}
+
+// ── 이동 ─────────────────────────────────────────────────────────────────────
+
+bool RunMap::move(char dir) {
+    Direction d;
+    if      (dir == 'w') d = Direction::North;
+    else if (dir == 's') d = Direction::South;
+    else if (dir == 'a') d = Direction::West;
+    else if (dir == 'd') d = Direction::East;
+    else return false;
+
+    int nextId = graph.getNeighbor(roomId(cur.floor, cur.row, cur.col), d);
+    if (nextId < 0) {
+        std::cout << "  그 방향으로는 이동할 수 없습니다.\n";
+        return false;
+    }
+
+    history.push(cur);
+    cur = Position(nextId / 9, (nextId % 9) / 3, nextId % 3);
     return true;
 }
 
-RoomType RunMap::advance() {
-    nodes[currentNodeId].visited = true;
-    MapNode& cur = nodes[currentNodeId];
-    if (cur.childCount == 0) return currentType();
-
-    int prevId = currentNodeId;
-
-    if (cur.childCount == 1) {
-        currentNodeId = cur.children[0];
-    } else {
-        std::cout << "\n  ── 분기 선택 ──────────────────────────────\n";
-        for (int i = 0; i < cur.childCount; ++i) {
-            int childId = cur.children[i];
-            std::cout << "  [" << i << "]  "
-                      << (nodes[childId].isBoss ? "▲ BOSS" : "? 미탐색") << "\n";
-        }
-        std::cout << "\n  선택 > ";
-        std::string line;
-        std::getline(std::cin, line);
-        int choice = (line.empty() || !(line[0] >= '0' && line[0] <= '9')) ? 0 : std::stoi(line);
-        if (choice < 0 || choice >= cur.childCount) choice = 0;
-        currentNodeId = cur.children[choice];
-    }
-
-    moveHistory.push(prevId);
-
-    if (nodes[currentNodeId].isBoss)
-        roomTypes[currentNodeId] = RoomType::Boss;
-    else
-        roomTypes[currentNodeId] = rollRoomType();
-
-    std::cout << "\n  → 입장: " << roomLabel(roomTypes[currentNodeId]) << "\n";
-    UI::pause();
-    return roomTypes[currentNodeId];
+bool RunMap::undoMove() {
+    Position prev;
+    if (!history.pop(prev)) return false;
+    cur = prev;
+    return true;
 }
 
-RoomType RunMap::currentType() const { return roomTypes[currentNodeId]; }
-int      RunMap::currentId()   const { return currentNodeId; }
-bool     RunMap::isAtBoss()    const { return nodes[currentNodeId].isBoss; }
+bool RunMap::advanceFloor() {
+    if (!isAtStairs() || cur.floor >= 2) return false;
+    history.push(cur);
+    cur = Position(cur.floor + 1, 0, 0);
+    cleared[cur.floor][0][0] = true;  // 다음 층 시작방 방문 처리
+    return true;
+}
+
+// ── 상태 조회 ─────────────────────────────────────────────────────────────────
+
+RoomType RunMap::currentType()  const { return LAYOUT[cur.floor][cur.row][cur.col]; }
+bool     RunMap::isAtBoss()     const { return currentType() == RoomType::Boss; }
+bool     RunMap::isAtStairs()   const { return currentType() == RoomType::Stairs; }
+bool     RunMap::isCleared()    const { return cleared[cur.floor][cur.row][cur.col]; }
+void     RunMap::clearCurrent()       { cleared[cur.floor][cur.row][cur.col] = true; }
+
+// ── 출력 ─────────────────────────────────────────────────────────────────────
 
 void RunMap::printMap() const {
-    int curDepth = nodes[currentNodeId].depth;
+    // 3개 층을 가로로 나란히 표시
+    std::cout << "  ════════════════════════════════════════════════════\n";
 
-    std::cout << "  ═══════════════════════════════════════════════\n";
-    std::cout << "  던전 맵  (진행도 " << curDepth << " / " << MAP_DEPTH << ")\n";
-    std::cout << "  ───────────────────────────────────────────────\n";
+    // 층 헤더
+    std::cout << "  ";
+    for (int f = 0; f < 3; ++f) {
+        bool here = (cur.floor == f);
+        if (here) std::cout << " [FLOOR " << (f + 1) << "] ";
+        else      std::cout << "  FLOOR " << (f + 1) << "  ";
+        if (f < 2) std::cout << "    ";
+    }
+    std::cout << "\n  ────────────────────────────────────────────────────\n";
 
-    for (int d = 0; d <= MAP_DEPTH; ++d) {
-        std::cout << "  " << d << "  ";
-        for (int i = 0; i < nodeCount; ++i) {
-            if (nodes[i].depth != d) continue;
-
-            if (nodes[i].id == currentNodeId) {
-                std::cout << "[ ★ " << roomLabel(roomTypes[i]) << " ]  ";
-            } else if (nodes[i].visited) {
-                std::cout << "[ ● " << roomLabel(roomTypes[i]) << " ]  ";
-            } else if (nodes[i].isBoss) {
-                std::cout << "[ ▲  BOSS     ]  ";
-            } else {
-                std::cout << "[    ?        ]  ";
+    // 행 × 열 × 층 순으로 출력
+    for (int r = 0; r < 3; ++r) {
+        std::cout << "  ";
+        for (int f = 0; f < 3; ++f) {
+            for (int c = 0; c < 3; ++c) {
+                bool here = (cur.floor == f && cur.row == r && cur.col == c);
+                if (here)
+                    std::cout << "[ P ]";
+                else if (cleared[f][r][c] && LAYOUT[f][r][c] != RoomType::Start
+                                          && LAYOUT[f][r][c] != RoomType::Stairs)
+                    std::cout << "[ * ]";
+                else
+                    std::cout << "[" << roomSymbol(LAYOUT[f][r][c]) << "]";
             }
+            if (f < 2) std::cout << "  ";
         }
         std::cout << "\n";
     }
-    std::cout << "  ═══════════════════════════════════════════════\n";
+
+    std::cout << "  ────────────────────────────────────────────────────\n";
+    std::cout << "  S=시작  B=전투  E=이벤트  R=휴식  ^=계단  X=보스  *=클리어  P=현재\n";
+    std::cout << "  이동: w=위  s=아래  a=왼쪽  d=오른쪽   u=되돌리기   h=도움말\n";
+    std::cout << "  ════════════════════════════════════════════════════\n\n";
+}
+
+void RunMap::printGraph() const {
+    graph.printMap();
 }

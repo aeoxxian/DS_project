@@ -43,7 +43,7 @@ bool StatusTracker::isStunned() const { return has("stun"); }
 
 void StatusTracker::removeDebuffs(int n) {
     static const char* debuffs[] = {
-        "weaken","atk_down","mag_down","def_down",
+        "weaken","vulnerable","atk_down","mag_down","def_down",
         "burn","confuse","stun"
     };
     int removed = 0;

@@ -1,5 +1,5 @@
 #include "registry/MonsterRegistry.h"
-#include "effect/Effect.h"
+#include "registry/CardRegistry.h"
 #include <iostream>
 
 MonsterRegistry::MonsterRegistry() : count(0) {}
@@ -35,92 +35,119 @@ void MonsterRegistry::printAll() const {
                   << "  HP:" << entries[i].baseHP << "\n";
 }
 
+// ── 헬퍼 ─────────────────────────────────────────────────────────────────────
+
+static void addCardByName(EnemyDef& def, CardRegistry& cards, const std::string& name) {
+    Card card;
+    if (cards.findByName(name, card))
+        def.addCard(card);
+    else
+        std::cout << "[MonsterRegistry] missing card: " << name << "\n";
+}
+
 // ── 몬스터 등록 ───────────────────────────────────────────────────────────────
-//
-// 양식:
-//   EnemyDef def("이름", HP, ATK, DEF, MGC, Track);
-//
-//   Card skill1(0, "공격", "단일 타격", Track::None, TargetScope::Single);
-//   skill1.addEffect(physAttack(10));
-//   def.addSkill(skill1);
-//
-//   Card skill2(0, "독 분사", "전체 독", Track::None, TargetScope::All);
-//   skill2.addEffect(poison(3));
-//   def.addSkill(skill2);
-//
-//   reg.registerMonster(def);
-//
-// 패턴은 addSkill 순서대로 순환: skill1 → skill2 → skill1 → ...
-// ─────────────────────────────────────────────────────────────────────────────
 
 void registerAllMonsters() {
-    using namespace Effects;
-    MonsterRegistry& reg = MonsterRegistry::instance();
+    MonsterRegistry& reg   = MonsterRegistry::instance();
+    CardRegistry&    cards = CardRegistry::instance();
 
     // ── Nuclear ───────────────────────────────────────────────────────────────
     {   EnemyDef def("Fission Hound", 60, 8, 4, Track::Nuclear);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Strike");
+        addCardByName(def, cards, "Poison Dart");
+        addCardByName(def, cards, "Fission Burst");
         reg.registerMonster(def); }
 
     {   EnemyDef def("Reactor Wraith", 100, 12, 6, Track::Nuclear);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Radiation Pulse");
+        addCardByName(def, cards, "Containment Breach");
+        addCardByName(def, cards, "Guard");
         reg.registerMonster(def); }
 
     // ── NewMaterial ───────────────────────────────────────────────────────────
     {   EnemyDef def("Nano Swarm", 50, 7, 5, Track::NewMaterial);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Double Strike");
+        addCardByName(def, cards, "Disarm");
+        addCardByName(def, cards, "Nano Blade");
         reg.registerMonster(def); }
 
     {   EnemyDef def("Carbon Golem", 120, 10, 14, Track::NewMaterial);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Composite Shield");
+        addCardByName(def, cards, "Graphene Edge");
+        addCardByName(def, cards, "Heavy Blow");
         reg.registerMonster(def); }
 
     // ── Hydrogen ──────────────────────────────────────────────────────────────
     {   EnemyDef def("Cryo Crawler", 55, 9, 5, Track::Hydrogen);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Cryo Jet");
+        addCardByName(def, cards, "Disarm");
+        addCardByName(def, cards, "Strike");
         reg.registerMonster(def); }
 
     {   EnemyDef def("Plasma Leech", 80, 11, 6, Track::Hydrogen);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Fuel Cell Blast");
+        addCardByName(def, cards, "Plasma Arc");
+        addCardByName(def, cards, "Combustion");
         reg.registerMonster(def); }
 
     // ── EcoTech ───────────────────────────────────────────────────────────────
     {   EnemyDef def("Gust Wraith", 45, 8, 4, Track::EcoTech);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Gust Slash");
+        addCardByName(def, cards, "Smoke Veil");  // Self evade — 적 자신에게 적용
+        addCardByName(def, cards, "Wind Shear");
         reg.registerMonster(def); }
 
     {   EnemyDef def("Turbine Beast", 90, 13, 8, Track::EcoTech);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Turbine Kick");
+        addCardByName(def, cards, "Tailwind");    // Party ATK 버프 — 적 파티에 적용됨 (sourceIsPlayer=false)
+        addCardByName(def, cards, "Heavy Blow");
         reg.registerMonster(def); }
 
     // ── AI ────────────────────────────────────────────────────────────────────
     {   EnemyDef def("Rogue Drone", 55, 9, 5, Track::AI);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Algorithm Strike");
+        addCardByName(def, cards, "Data Wipe");
+        addCardByName(def, cards, "Predictive Aim");
         reg.registerMonster(def); }
 
     {   EnemyDef def("Neural Phantom", 95, 11, 6, Track::AI);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Neural Surge");
+        addCardByName(def, cards, "Recursive Strike");
+        addCardByName(def, cards, "Hotfix");      // 자가 HP 회복
         reg.registerMonster(def); }
 
     // ── Grid ──────────────────────────────────────────────────────────────────
     {   EnemyDef def("Static Fiend", 65, 8, 6, Track::Grid);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Blackout Strike");
+        addCardByName(def, cards, "Static Field");
+        addCardByName(def, cards, "Arc Flash");
         reg.registerMonster(def); }
 
     {   EnemyDef def("Overload Titan", 130, 14, 10, Track::Grid);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Power Surge");
+        addCardByName(def, cards, "Capacitor");   // 자가 ATK 버프 + 방어막
+        addCardByName(def, cards, "Overvoltage");
         reg.registerMonster(def); }
 
-    // ── 보스 (isBoss = true) ──────────────────────────────────────────────────
-    {   EnemyDef def("NEXUS Core",     300, 20, 15, Track::AI,      true);
-        // TODO: 스킬 추가
+    // ── 보스 ─────────────────────────────────────────────────────────────────
+    {   EnemyDef def("NEXUS Core", 300, 20, 15, Track::AI, true);
+        addCardByName(def, cards, "Targeting Matrix");
+        addCardByName(def, cards, "Stack Overflow");
+        addCardByName(def, cards, "Encryption");  // 자가 block + DEF 버프
+        addCardByName(def, cards, "Singularity");
         reg.registerMonster(def); }
 
     {   EnemyDef def("Meltdown Titan", 280, 22, 12, Track::Nuclear, true);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Irradiate");
+        addCardByName(def, cards, "Critical Mass");
+        addCardByName(def, cards, "Containment Breach");
+        addCardByName(def, cards, "Detonate");
         reg.registerMonster(def); }
 
     {   EnemyDef def("Storm Colossus", 260, 18, 14, Track::EcoTech, true);
-        // TODO: 스킬 추가
+        addCardByName(def, cards, "Wind Shear");
+        addCardByName(def, cards, "Eye of Storm"); // 자가 evade + heal
+        addCardByName(def, cards, "Tornado");
+        addCardByName(def, cards, "Gaia's Blessing"); // Party 힐 — 적 파티에 적용됨 (sourceIsPlayer=false)
         reg.registerMonster(def); }
 }

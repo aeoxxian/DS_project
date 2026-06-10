@@ -10,6 +10,7 @@
 #include "battle/BattleStats.h"
 #include "ds/ScoreTree.h"
 #include "run/Inventory.h"
+#include "event/Event.h"
 #include "registry/Registries.h"
 
 class Game {
@@ -20,6 +21,7 @@ private:
     bool            alive;
 
     Inventory   inventory;
+    int         gold;
     BattleStats battleLog[MAX_MAP_NODES];
     int         battleLogCount;
     ScoreTree   scoreTree;
@@ -28,8 +30,10 @@ private:
     void buildPool();
     void handleBattle(bool isBoss = false);
     void handleEvent();
+    void handleShop();
     void handleRest();
     void printRunSummary() const;
+    void applyOutcome(const EventOutcome& out);
 
 public:
     Game();

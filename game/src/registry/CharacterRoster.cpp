@@ -36,7 +36,10 @@ void CharacterRoster::printAll() const {
 void registerAllCharacters() {
     CharacterRoster& r = CharacterRoster::instance();
 
-    r.registerCharacter(CharacterDef(1, "캐릭터1", "팀원 A", 100, 10, 8, Track::Nuclear));
-    r.registerCharacter(CharacterDef(2, "캐릭터2", "팀원 B", 90,  8,  6, Track::AI));
-    r.registerCharacter(CharacterDef(3, "캐릭터3", "팀원 C", 95,  9,  7, Track::Grid));
+    r.registerCharacter(CharacterDef(1, "이민준", "Nuclear 트랙",     100, 0, 0, Track::Nuclear));
+    r.registerCharacter(CharacterDef(2, "김서연", "AI 트랙",          100, 0, 0, Track::AI));
+    r.registerCharacter(CharacterDef(3, "박준서", "Grid 트랙",        100, 0, 0, Track::Grid));
+    r.registerCharacter(CharacterDef(4, "최유진", "NewMaterial 트랙", 100, 0, 0, Track::NewMaterial));
+    r.registerCharacter(CharacterDef(5, "정하은", "Hydrogen 트랙",    100, 0, 0, Track::Hydrogen));
+    r.registerCharacter(CharacterDef(6, "한승준", "EcoTech 트랙",     100, 0, 0, Track::EcoTech));
 }
