@@ -12,25 +12,11 @@
 #include <sstream>
 #include <cstdlib>
 
-Game::Game(bool isRetry) : alive(true), battleLogCount(0),
+Game::Game() : alive(true), battleLogCount(0),
                unlocks("save/unlocks.dat"), deckSave("save/decks.dat") {
     for (int i = 0; i < MAX_CHARACTERS; ++i) charTotalDamage[i] = 0;
     unlocks.load();
     deckSave.load();
-
-    if (isRetry) {
-        UI::clear();
-        std::cout << "\n\n";
-        UI::typewrite("재수강이다.", 60);
-        UI::sleep(400);
-        UI::typewrite("탑은 변하지 않았다.", 30);
-        UI::sleep(300);
-        UI::typewrite("하지만 이번엔 다르다. (아마도)", 25);
-        UI::sleep(700);
-        selectParty();
-        selectStartingDeck();
-        return;
-    }
 
     bool loadMode = showTitleScreen();
     if (loadMode && tryLoadPreset()) return;  // party+deck 모두 복원됨
@@ -693,11 +679,56 @@ void Game::applyOutcome(const EventOutcome& out) {
         }
         case OutcomeType::RemoveCard:
         case OutcomeType::RemoveSelectedCard:
+            removeSelectedCardFromDeck();
             break;
         case OutcomeType::OpenShop:
             handleShop();
             break;
         default: break;
+    }
+}
+
+void Game::removeSelectedCardFromDeck() {
+    if (pool.isEmpty()) {
+        std::cout << "  제거할 카드가 없습니다.\n";
+        return;
+    }
+
+    std::cout << "\n  제거할 카드를 선택하세요.\n";
+    pool.print();
+
+    while (true) {
+        std::cout << "  제거할 카드 번호 [q 취소] > ";
+        std::string line;
+        std::getline(std::cin, line);
+
+        if (line == "q" || line == "Q") {
+            std::cout << "  카드 제거를 취소했습니다.\n";
+            return;
+        }
+
+        bool number = !line.empty();
+        int index = 0;
+        for (int i = 0; i < static_cast<int>(line.size()); ++i) {
+            if (line[i] < '0' || line[i] > '9') {
+                number = false;
+                break;
+            }
+            index = index * 10 + (line[i] - '0');
+        }
+
+        Card removed;
+        if (!number || !pool.getCard(index, removed)) {
+            std::cout << "  잘못된 번호입니다. 다시 입력해주세요.\n";
+            continue;
+        }
+
+        if (pool.removeCard(index)) {
+            std::cout << "  [" << removed.getName() << "] 카드를 제거했습니다.\n";
+        } else {
+            std::cout << "  카드 제거에 실패했습니다.\n";
+        }
+        return;
     }
 }
 
@@ -910,7 +941,7 @@ void Game::printRunSummary() const {
 
 // ── Main game loop ─────────────────────────────────────────────────────────────
 
-bool Game::run() {
+void Game::run() {
     UI::clear();
     std::cout << "\n  ══════════════════ 던전 입장 ══════════════════\n";
     std::cout << "\n  파티: ";
@@ -1023,85 +1054,12 @@ bool Game::run() {
     }
 
     UI::clear();
-
-    static const int EW = 62;
-
     if (alive) {
-        // ── 클리어 엔딩 ────────────────────────────────────────────────────
-        UI::sleep(300);
-
-        std::cout << "\n";
-        UI::boxTop(EW);
-        UI::boxCenter("D U N G E O N   E X P L O R E R", EW);
-        UI::boxCenter("지식의 상아탑", EW);
-        UI::boxMid(EW);
-        UI::boxEmpty(EW);
-        UI::boxCenter("★  탐험  완료  ★", EW);
-        UI::boxCenter("보스를 격파하고 탑을 탈출했습니다", EW);
-        UI::boxEmpty(EW);
-        UI::boxBot(EW);
-        std::cout << "\n";
-        UI::pause();
-
-        // 졸업장 컨셉 클리어 내러티브
-        UI::clear();
-        std::cout << "\n\n";
-        UI::typewrite("보스가 쓰러졌다.", 35);
-        UI::sleep(400);
-        UI::typewrite("졸업요건이 충족됐다.", 30);
-        UI::sleep(600);
-        UI::typewrite("전공이 다른 조원들과 함께한 조별과제치고는 꽤 잘 됐다.", 18);
-        UI::sleep(500);
-        UI::typewrite("이 과목 하나 때문에 졸업을 못 할 뻔했다.", 22);
-        UI::sleep(700);
-        UI::typewrite("학점이 나올지는 모르겠지만, 어쨌든 통과다.", 20);
-        UI::sleep(500);
-        UI::typewrite("탑은 여전히 저기 있다.", 30);
-        std::cout << "\n";
-
-        // 생존 파티 박스
-        std::cout << "\n";
-        UI::boxTop(EW);
-        UI::boxCenter("─  탐험 결과  ─", EW);
-        UI::boxDiv(EW);
-        for (int i = 0; i < MAX_CHARACTERS; ++i) {
-            std::string status = party[i].isAlive()
-                ? "생존   HP " + std::to_string(party[i].getHP())
-                  + " / " + std::to_string(party[i].getMaxHP())
-                : "전투 중 사망";
-            UI::boxLeft(party[i].getName() + "  [" + trackToString(party[i].getTrack()) + "]"
-                        + "   " + status, EW);
-        }
-        UI::boxBot(EW);
-        std::cout << "\n";
-
+        UI::banner("★  던전  클리어  ★",
+                   "  보스 격파! 던전 탈출!");
     } else {
-        // ── 게임 오버 (재수강) ─────────────────────────────────────────────
-        UI::banner("F  학  점", "파티 전원이 쓰러졌습니다...");
-        UI::sleep(400);
-        UI::typewrite("다들 쓰러졌다.", 40);
-        UI::sleep(300);
-        UI::typewrite("이 과목, 재수강이다.", 28);
-        UI::sleep(500);
-        UI::typewrite("탑은 다음 학기에도 열린다.", 25);
-        std::cout << "\n";
+        UI::banner("게  임  오  버",
+                   "  파티 전원이 쓰러졌습니다...");
     }
-
     printRunSummary();
-
-    // ── 재수강 / 종료 프롬프트 ────────────────────────────────────────────
-    std::cout << "\n";
-    UI::boxTop(EW);
-    if (alive)
-        UI::boxCenter("다음 학기 수강신청", EW);
-    else
-        UI::boxCenter("재수강 신청", EW);
-    UI::boxMid(EW);
-    UI::boxLeft("[Y]  재수강 신청  (다시 오른다)", EW);
-    UI::boxLeft("[N]  자퇴          (현명하진 않음)", EW);
-    UI::boxBot(EW);
-    std::cout << "\n  > ";
-    std::string retryLine;
-    std::getline(std::cin, retryLine);
-    return (!retryLine.empty() && (retryLine[0] == 'Y' || retryLine[0] == 'y'));
 }

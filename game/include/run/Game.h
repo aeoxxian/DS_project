@@ -46,10 +46,11 @@ private:
     void handleRest();
     void printRunSummary() const;
     void applyOutcome(const EventOutcome& out);
+    void removeSelectedCardFromDeck();
 
 public:
-    Game(bool isRetry = false);
-    bool run();  // true = 재도전 선택
+    Game();
+    void run();
 };
 
 #endif
