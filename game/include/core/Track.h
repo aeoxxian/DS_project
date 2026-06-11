@@ -15,13 +15,13 @@ enum class Track {
 
 inline std::string trackToString(Track t) {
     switch (t) {
-        case Track::Nuclear:     return "Nuclear";
-        case Track::NewMaterial: return "NewMaterial";
-        case Track::Hydrogen:    return "Hydrogen";
-        case Track::EcoTech:     return "EcoTech";
-        case Track::AI:          return "AI";
-        case Track::Grid:        return "Grid";
-        default:                 return "None";
+        case Track::Nuclear:     return "핵공학";
+        case Track::NewMaterial: return "신소재";
+        case Track::Hydrogen:    return "수소";
+        case Track::EcoTech:     return "환경기후기술";
+        case Track::AI:          return "인공지능";
+        case Track::Grid:        return "스마트그리드";
+        default:                 return "공용";
     }
 }
 

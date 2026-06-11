@@ -10,8 +10,10 @@ static const int DRAW_PER_TURN       = 5;
 static const int BATTLE_REWARD_COUNT = 3;
 
 // ── Hand / Pool ───────────────────────────────────────────────────────────────
-static const int MAX_HAND_SIZE = 10;
-static const int MAX_POOL_SIZE = 64;
+static const int MAX_HAND_SIZE       = 10;
+static const int MAX_POOL_SIZE       = 64;
+static const int DECK_TRACK_LIMIT    = 5;   // 트랙별 최대 카드 수
+static const int DECK_COMMON_LIMIT   = 10;  // 공용 카드 최대 수
 
 // ── Card ──────────────────────────────────────────────────────────────────────
 static const int MAX_EFFECTS_PER_CARD = 4;

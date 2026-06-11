@@ -14,9 +14,26 @@ bool CardPool::removeCard(int index) {
 
 int  CardPool::size()    const { return cards.size(); }
 bool CardPool::isEmpty() const { return cards.isEmpty(); }
+void CardPool::clear()         { cards.clear(); }
+
+int CardPool::countByTrack(Track t) const {
+    int n = 0;
+    auto* node = cards.getHead();
+    while (node) {
+        if (node->value.getTrack() == t) ++n;
+        node = node->next;
+    }
+    return n;
+}
+
+bool CardPool::canAddCard(const Card& c) const {
+    if (c.getTrack() == Track::None)
+        return countByTrack(Track::None) < DECK_COMMON_LIMIT;
+    return countByTrack(c.getTrack()) < DECK_TRACK_LIMIT;
+}
 
 void CardPool::print() const {
-    std::cout << "  Deck (" << cards.size() << " cards):\n";
+    std::cout << "  덱 (" << cards.size() << "장):\n";
     auto* node = cards.getHead();
     int i = 0;
     while (node) {

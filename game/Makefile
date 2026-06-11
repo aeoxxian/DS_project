@@ -45,7 +45,8 @@ DS_SRC = \
 	src/ds/Sorting.cpp
 
 SAVE_SRC = \
-	src/save/UnlockSave.cpp
+	src/save/UnlockSave.cpp \
+	src/save/DeckSave.cpp
 
 APP_SOURCES = src/main.cpp \
 	$(CORE_SRC) $(EFFECT_SRC) $(CARD_SRC) $(COMBATANT_SRC) \

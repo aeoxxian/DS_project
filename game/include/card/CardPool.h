@@ -2,6 +2,7 @@
 #define CARD_POOL_H
 
 #include "card/Card.h"
+#include "core/Track.h"
 #include "ds/LinkedList.h"
 
 // 파티 공유 카드풀 — 런 전체에서 유지되는 덱
@@ -13,9 +14,12 @@ public:
     bool addCard(const Card& card);
     bool getCard(int index, Card& out) const;
     bool removeCard(int index);
-    int  size()    const;
-    bool isEmpty() const;
-    void print()   const;
+    int  size()             const;
+    bool isEmpty()          const;
+    void clear();
+    void print()            const;
+    int  countByTrack(Track t) const;
+    bool canAddCard(const Card& c) const;
 };
 
 // 손패 — 배열 기반 고정 슬롯 (인덱스 안정: 카드 사용 시 슬롯 번호 유지)

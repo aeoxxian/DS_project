@@ -4,6 +4,21 @@
 #include "core/Constants.h"
 #include <string>
 
+inline const char* statDisplayName(const std::string& stat) {
+    if (stat == "poison")     return "독";
+    if (stat == "weaken")     return "약화";
+    if (stat == "vulnerable") return "취약";
+    if (stat == "stun")       return "기절";
+    if (stat == "confuse")    return "혼란";
+    if (stat == "shield")     return "방어막";
+    if (stat == "atk_up")     return "공격↑";
+    if (stat == "def_up")     return "방어↑";
+    if (stat == "evasion")    return "회피";
+    if (stat == "block")      return "차단";
+    if (stat == "burn")       return "화상";
+    return stat.c_str();
+}
+
 struct ActiveStatus {
     std::string stat;
     int value;

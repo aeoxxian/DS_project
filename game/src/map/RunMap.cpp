@@ -27,12 +27,12 @@ int RunMap::roomId(int f, int r, int c) const { return f * 9 + r * 3 + c; }
 
 static const char* roomLabel(RoomType t) {
     switch (t) {
-        case RoomType::Start:   return "Start";
-        case RoomType::Battle:  return "Battle";
-        case RoomType::Event:   return "Event";
-        case RoomType::Rest:    return "Rest";
-        case RoomType::Stairs:  return "Stairs";
-        case RoomType::Boss:    return "BOSS";
+        case RoomType::Start:   return "시작";
+        case RoomType::Battle:  return "전투";
+        case RoomType::Event:   return "이벤트";
+        case RoomType::Rest:    return "휴식";
+        case RoomType::Stairs:  return "계단";
+        case RoomType::Boss:    return "보스";
     }
     return "??";
 }

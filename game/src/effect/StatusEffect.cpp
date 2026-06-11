@@ -5,8 +5,9 @@
 static const int CONFUSE_CHANCE = 30;
 
 std::string ActiveStatus::toString() const {
-    std::string s = stat + "(" + std::to_string(value);
-    if (duration > 0) s += "x" + std::to_string(duration) + "t";
+    std::string kname = statDisplayName(stat);
+    std::string s = kname + "(" + std::to_string(value);
+    if (duration > 0) s += "x" + std::to_string(duration) + "턴";
     return s + ")";
 }
 
@@ -57,7 +58,7 @@ void StatusTracker::removeDebuffs(int n) {
             }
         }
     }
-    if (removed > 0) std::cout << "  (Cleansed " << removed << " debuff(s))\n";
+    if (removed > 0) std::cout << "  (" << removed << "개 디버프 제거)\n";
 }
 
 void StatusTracker::clear() { count = 0; }
@@ -93,12 +94,12 @@ StatusResult StatusTracker::processTurn(const std::string& name) {
     StatusResult result;
 
     if (has("stun")) {
-        std::cout << "  " << name << " is stunned!\n";
+        std::cout << "  " << name << " 기절 상태!\n";
         result.canAct = false;
     }
 
     if (result.canAct && has("confuse") && rand() % 100 < CONFUSE_CHANCE) {
-        std::cout << "  " << name << " is confused!\n";
+        std::cout << "  " << name << " 혼란 상태!\n";
         result.attacksSelf = true;
     }
 
@@ -107,11 +108,11 @@ StatusResult StatusTracker::processTurn(const std::string& name) {
             result.poisonDamage += statuses[i].value;
     }
     if (result.poisonDamage > 0)
-        std::cout << "  " << name << " takes " << result.poisonDamage << " poison damage\n";
+        std::cout << "  " << name << " 독 데미지 -" << result.poisonDamage << "\n";
 
     if (has("burn")) {
         result.healReduction = 50;
-        std::cout << "  " << name << " is burned! (회복량 50% 감소)\n";
+        std::cout << "  " << name << " 화상! (회복량 50% 감소)\n";
     }
 
     return result;

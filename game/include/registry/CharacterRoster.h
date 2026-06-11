@@ -26,6 +26,7 @@ public:
     static CharacterRoster& instance();
     bool registerCharacter(const CharacterDef& def);
     bool getAt(int index, CharacterDef& out) const;
+    bool findByName(const std::string& name, CharacterDef& out) const;
     int  size() const;
     void printAll() const;
 };

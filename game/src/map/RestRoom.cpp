@@ -15,11 +15,11 @@ void RestRoom::enter(BattleCharacter characters[], int count, CardPool& pool) {
     (void)pool;
     std::cout << "\n";
     UI::boxTop(W);
-    UI::boxCenter("★  REST  ★", W);
+    UI::boxCenter("★  휴  식  ★", W);
     UI::boxMid(W);
-    UI::boxLeft("[0]  Heal all  (+20 HP)", W);
-    UI::boxLeft("[1]  +1 ATK  (permanent, one character)", W);
-    UI::boxLeft("[2]  +1 DEF  (permanent, one character)", W);
+    UI::boxLeft("[0]  파티 전체 회복  (+20 HP)", W);
+    UI::boxLeft("[1]  공격력 +1  (영구, 캐릭터 1명)", W);
+    UI::boxLeft("[2]  방어력 +1  (영구, 캐릭터 1명)", W);
     UI::boxBot(W);
     std::cout << "\n  > ";
 
@@ -28,27 +28,27 @@ void RestRoom::enter(BattleCharacter characters[], int count, CardPool& pool) {
     int choice = safeInt(line, 0);
 
     if (choice == 1 || choice == 2) {
-        std::cout << "\n  Characters:\n";
+        std::cout << "\n  캐릭터 목록:\n";
         for (int i = 0; i < count; ++i) {
             if (!characters[i].isAlive()) continue;
             std::cout << "  [" << i << "] " << characters[i].getName()
                       << "  ATK:" << characters[i].getAttackPower()
                       << "  DEF:" << characters[i].getDefend() << "\n";
         }
-        std::cout << "  Choose character > ";
+        std::cout << "  캐릭터 번호 > ";
         std::string charLine;
         std::getline(std::cin, charLine);
         int ci = safeInt(charLine, -1);
         if (ci < 0 || ci >= count || !characters[ci].isAlive()) {
-            UI::typewrite("Invalid selection.", 15);
+            UI::typewrite("잘못된 선택입니다.", 15);
             return;
         }
         if (choice == 1) {
             characters[ci].permBoostAtk(1);
-            UI::typewrite(characters[ci].getName() + " ATK +1 (permanent)", 15);
+            UI::typewrite(characters[ci].getName() + " 공격력 +1 (영구)", 15);
         } else {
             characters[ci].permBoostDef(1);
-            UI::typewrite(characters[ci].getName() + " DEF +1 (permanent)", 15);
+            UI::typewrite(characters[ci].getName() + " 방어력 +1 (영구)", 15);
         }
     } else {
         healOption(characters, count);
@@ -58,7 +58,7 @@ void RestRoom::enter(BattleCharacter characters[], int count, CardPool& pool) {
 void RestRoom::healOption(BattleCharacter characters[], int count) {
     for (int i = 0; i < count; ++i) characters[i].heal(REST_HEAL_AMOUNT);
     std::cout << "\n";
-    UI::typewrite("Party healed +" + std::to_string(REST_HEAL_AMOUNT) + " HP", 15);
+    UI::typewrite("파티 회복 +" + std::to_string(REST_HEAL_AMOUNT) + " HP", 15);
     std::cout << "\n";
 }
 

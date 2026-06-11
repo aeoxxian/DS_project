@@ -19,6 +19,12 @@ bool CharacterRoster::getAt(int index, CharacterDef& out) const {
     out = entries[index]; return true;
 }
 
+bool CharacterRoster::findByName(const std::string& name, CharacterDef& out) const {
+    for (int i = 0; i < count; ++i)
+        if (entries[i].name == name) { out = entries[i]; return true; }
+    return false;
+}
+
 int CharacterRoster::size() const { return count; }
 
 void CharacterRoster::printAll() const {

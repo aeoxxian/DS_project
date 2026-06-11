@@ -13,6 +13,7 @@
 #include "event/Event.h"
 #include "registry/Registries.h"
 #include "save/UnlockSave.h"
+#include "save/DeckSave.h"
 
 class Game {
 private:
@@ -27,13 +28,18 @@ private:
     ScoreTree   scoreTree;
     int         charTotalDamage[MAX_CHARACTERS];
     UnlockSave  unlocks;
+    DeckSave    deckSave;
 
+    bool showTitleScreen();      // true = 불러오기 모드
+    bool tryLoadPreset();        // 슬롯 UI → party+deck 복원. 성공 시 true
     void selectParty();
     void selectStartingDeck();
     void buildDefaultStarterDeck();
     void buildPool();
     void addCardAndUnlock(const Card& c);
-    bool pickRandomValidCard(Card& out) const; // 공용 or 파티 트랙 일치 카드 랜덤 선택
+    bool pickRandomValidCard(Card& out) const;
+    void offerCardReplace(const Card& offered);
+    void saveDeckPreset(const std::string& name);
     void handleBattle(bool isBoss = false);
     void handleEvent();
     void handleShop();
