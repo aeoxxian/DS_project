@@ -22,7 +22,7 @@ inline void sleep(int ms) {
 }
 
 inline void pause() {
-    std::cout << "\n  [ Enter ] Continue... ";
+    std::cout << "\n  [ Enter ]  계속... ";
     std::string s;
     std::getline(std::cin, s);
 }

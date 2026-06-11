@@ -90,9 +90,11 @@ int main() {
 
         if (choice == 0) break;
         if (choice == 1) {
-            Game game;
-            game.run();
-            UI::pause();
+            bool retry = false;
+            do {
+                Game game(retry);
+                retry = game.run();
+            } while (retry);
         }
         if (choice == 2) {
             showIntro();
