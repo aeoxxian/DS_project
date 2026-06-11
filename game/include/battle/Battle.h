@@ -9,6 +9,7 @@
 #include "battle/BattleStats.h"
 #include "ds/Stack.h"
 #include "run/Inventory.h"
+#include "save/UnlockSave.h"
 
 class Battle {
 private:
@@ -19,8 +20,9 @@ private:
     Enemy    enemies[MAX_ENEMIES];
     int      enemyCount;
     Hand     hand;
-    CardPool&  pool;
-    Inventory* inv;
+    CardPool&    pool;
+    Inventory*   inv;
+    UnlockSave*  unlocks;
     int      turnNumber;
     bool     battleOver;
     bool     playerWon;
@@ -33,7 +35,7 @@ private:
 
     void drawPhase();
     void displayBattleState() const;
-    void printHand() const;
+    void printHand(int forChar = -1) const;
     void assignPhase();
     void executePhase();
     void statusTickPhase();
@@ -55,7 +57,8 @@ private:
     int  livingPartyCount() const;
 
 public:
-    Battle(BattleCharacter party[], int partySize, CardPool& pool, Inventory* inv = nullptr);
+    Battle(BattleCharacter party[], int partySize, CardPool& pool,
+           Inventory* inv = nullptr, UnlockSave* unlocks = nullptr);
     void addEnemy(const Enemy& enemy);
     bool        run();
     bool        isPlayerWon() const;

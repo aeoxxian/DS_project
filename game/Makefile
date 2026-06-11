@@ -44,10 +44,13 @@ DS_SRC = \
 	src/ds/ScoreTree.cpp \
 	src/ds/Sorting.cpp
 
+SAVE_SRC = \
+	src/save/UnlockSave.cpp
+
 APP_SOURCES = src/main.cpp \
 	$(CORE_SRC) $(EFFECT_SRC) $(CARD_SRC) $(COMBATANT_SRC) \
 	$(BATTLE_SRC) $(EVENT_SRC) $(MAP_SRC) \
-	$(RUN_SRC) $(REGISTRY_SRC) $(DS_SRC)
+	$(RUN_SRC) $(REGISTRY_SRC) $(DS_SRC) $(SAVE_SRC)
 
 all: dungeon_explorer
 

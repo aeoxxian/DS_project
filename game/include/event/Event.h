@@ -6,7 +6,7 @@
 
 enum class OutcomeType {
     HealParty, DamageParty, AddCard, RemoveCard, RemoveSelectedCard,
-    GainGold, LoseGold, Nothing, HealRest, UpgradeCard, OpenShop
+    Nothing, HealRest, UpgradeCard, OpenShop
 };
 
 struct EventOutcome {

@@ -38,7 +38,6 @@ void EventRegistry::printAll() const {
 static EventOutcome heal(int v)   { return {OutcomeType::HealParty,        v, "파티 전체 HP +" + std::to_string(v) + " 회복"}; }
 static EventOutcome dmg(int v)    { return {OutcomeType::DamageParty,       v, "파티 전체 피해 " + std::to_string(v)}; }
 static EventOutcome card()        { return {OutcomeType::AddCard,           1, "무작위 카드 1장 획득"}; }
-static EventOutcome gold(int v)   { return {OutcomeType::GainGold,          v, "전리품 +" + std::to_string(v)}; }
 static EventOutcome removeCard()  { return {OutcomeType::RemoveSelectedCard, 0, "카드 1장 제거 (선택)"}; }
 static EventOutcome shop()        { return {OutcomeType::OpenShop,           0, "수상한 상점 오픈"}; }
 
@@ -52,7 +51,6 @@ void registerAllEvents() {
         Event e(1, "갑작스러운 정전",
                 "시설 전체의 조명이 꺼지고, 어둠 속을 더듬어 이동합니다.", true);
         EventChoice eff;
-        eff.addOutcome(gold(1));
         eff.addOutcome(dmg(5));
         e.addChoice(eff);
         reg.registerEvent(e);

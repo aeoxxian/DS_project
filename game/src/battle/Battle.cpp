@@ -2,13 +2,15 @@
 #include "run/Item.h"
 #include "registry/CardRegistry.h"
 #include "core/UI.h"
+#include "ds/DynamicArray.h"
 #include <iostream>
 #include <string>
 #include <iomanip>
 #include <cstdlib>
 
-Battle::Battle(BattleCharacter partyArr[], int size, CardPool& sharedPool, Inventory* inventory)
-    : partySize(size), enemyCount(0), pool(sharedPool), inv(inventory),
+Battle::Battle(BattleCharacter partyArr[], int size, CardPool& sharedPool,
+               Inventory* inventory, UnlockSave* unlockSave)
+    : partySize(size), enemyCount(0), pool(sharedPool), inv(inventory), unlocks(unlockSave),
       turnNumber(0), battleOver(false), playerWon(false),
       totalDamageDealt(0), totalDamageTaken(0), pendingDrawBonus(0),
       currentActorIdx(-1) {
@@ -295,7 +297,7 @@ void Battle::displayBattleState() const {
     UI::line(W, '=');
 }
 
-void Battle::printHand() const {
+void Battle::printHand(int forChar) const {
     static const int W = 58;
     UI::section("HAND  (" + std::to_string(hand.size()) + " cards)", W);
 
@@ -306,11 +308,11 @@ void Battle::printHand() const {
             continue;
         }
 
-        bool trackMatch = false;
-        if (c.isTrackCard())
-            for (int ci = 0; ci < partySize; ++ci)
-                if (party[ci]->isAlive() && party[ci]->hasTrack(c.getTrack()))
-                    { trackMatch = true; break; }
+        bool trackMatch = c.isTrackCard()
+                          && forChar >= 0
+                          && forChar < partySize
+                          && party[forChar]->isAlive()
+                          && party[forChar]->hasTrack(c.getTrack());
 
         std::cout << "  [" << i << "] "
                   << std::left << std::setw(18) << c.getName();
@@ -321,7 +323,6 @@ void Battle::printHand() const {
         else
             std::cout << "              ";
 
-        // Show registry description instead of effect codes
         std::string desc = c.getDescription();
         if (!desc.empty()) std::cout << "  " << desc;
         std::cout << "\n";
@@ -331,7 +332,11 @@ void Battle::printHand() const {
 void Battle::assignPhase() {
     static const int W = 58;
     assignStack.clear();
-    printHand();
+
+    // 첫 번째 살아있는 캐릭터 기준으로 초기 손패 출력
+    int firstAlive = 0;
+    while (firstAlive < partySize && !party[firstAlive]->isAlive()) ++firstAlive;
+    printHand(firstAlive < partySize ? firstAlive : -1);
 
     std::cout << "\n";
     UI::line(W, '-');
@@ -357,7 +362,7 @@ void Battle::assignPhase() {
         }
         if (line == "l" || line == "look") {
             displayBattleState();
-            printHand();
+            printHand(ci);
             std::cout << "\n";
             UI::line(W, '-');
             std::cout << "  ASSIGN CARDS   Alive: " << livingPartyCount();
@@ -372,7 +377,7 @@ void Battle::assignPhase() {
                 party[rec.ci]->clearAssignedCard();
                 std::cout << "  Undone: [" << rec.card.getName() << "] ("
                           << party[rec.ci]->getName() << ")\n";
-                printHand();
+                printHand(rec.ci);
                 std::cout << "\n";
                 UI::line(W, '-');
                 ci = rec.ci;
@@ -587,14 +592,29 @@ void Battle::rewardPhase() {
     std::cout << "\n";
     UI::boxTop(W);
     UI::boxCenter("BATTLE REWARD", W);
-    UI::boxCenter("Choose a card to add to your deck", W);
+    UI::boxCenter("카드 1장을 덱에 추가할 수 있습니다", W);
     UI::boxBot(W);
+
+    // 공용 or 파티 트랙 일치 카드만 후보로
+    DynamicArray<Card> pool_candidates;
+    for (int i = 0; i < reg.size(); ++i) {
+        Card c;
+        if (!reg.getAt(i, c)) continue;
+        if (c.getId() == 32) continue;
+        if (c.getTrack() == Track::None) { pool_candidates.pushBack(c); continue; }
+        for (int p = 0; p < partySize; ++p)
+            if (party[p]->hasTrack(c.getTrack())) { pool_candidates.pushBack(c); break; }
+    }
+    if (pool_candidates.size() == 0) return;
 
     Card offers[BATTLE_REWARD_COUNT];
     int offered = 0;
-    for (int attempt = 0; attempt < reg.size() * 2 && offered < BATTLE_REWARD_COUNT; ++attempt) {
-        Card c;
-        if (reg.getAt(rand() % reg.size(), c)) offers[offered++] = c;
+    for (int attempt = 0; attempt < pool_candidates.size() * 2 && offered < BATTLE_REWARD_COUNT; ++attempt) {
+        Card c = pool_candidates[rand() % pool_candidates.size()];
+        // 중복 제외
+        bool dup = false;
+        for (int k = 0; k < offered; ++k) if (offers[k].getId() == c.getId()) { dup = true; break; }
+        if (!dup) offers[offered++] = c;
     }
 
     for (int i = 0; i < offered; ++i) {
@@ -627,6 +647,7 @@ void Battle::rewardPhase() {
 
         if (ch == 'a') {
             pool.addCard(offers[i]);
+            if (unlocks) { unlocks->unlock(offers[i].getName()); unlocks->save(); }
             UI::typewrite("Added.  (Deck: " + std::to_string(pool.size()) + " cards)", 12);
         } else if (ch == 'r') {
             std::cout << "\n";
@@ -636,6 +657,7 @@ void Battle::rewardPhase() {
             int idx = (line.empty() || !(line[0] >= '0' && line[0] <= '9')) ? -1 : std::stoi(line);
             if (pool.removeCard(idx)) {
                 pool.addCard(offers[i]);
+                if (unlocks) { unlocks->unlock(offers[i].getName()); unlocks->save(); }
                 UI::typewrite("Replaced.", 12);
             } else {
                 std::cout << "  Invalid number -- skipped.\n";

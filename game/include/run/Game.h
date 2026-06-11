@@ -12,6 +12,7 @@
 #include "run/Inventory.h"
 #include "event/Event.h"
 #include "registry/Registries.h"
+#include "save/UnlockSave.h"
 
 class Game {
 private:
@@ -25,10 +26,14 @@ private:
     int         battleLogCount;
     ScoreTree   scoreTree;
     int         charTotalDamage[MAX_CHARACTERS];
+    UnlockSave  unlocks;
 
     void selectParty();
     void selectStartingDeck();
+    void buildDefaultStarterDeck();
     void buildPool();
+    void addCardAndUnlock(const Card& c);
+    bool pickRandomValidCard(Card& out) const; // 공용 or 파티 트랙 일치 카드 랜덤 선택
     void handleBattle(bool isBoss = false);
     void handleEvent();
     void handleShop();

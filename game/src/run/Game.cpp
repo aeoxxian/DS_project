@@ -12,8 +12,9 @@
 #include <sstream>
 #include <cstdlib>
 
-Game::Game() : alive(true), battleLogCount(0) {
+Game::Game() : alive(true), battleLogCount(0), unlocks("save/unlocks.dat") {
     for (int i = 0; i < MAX_CHARACTERS; ++i) charTotalDamage[i] = 0;
+    unlocks.load();
     selectParty();
     selectStartingDeck();
 }
@@ -176,42 +177,152 @@ static void pickPhase(CardPool& pool, const DynamicArray<Card>& list,
     }
 }
 
-void Game::selectStartingDeck() {
+// 첫 게임 기본 덱 (공용 기초 카드 25장)
+void Game::buildDefaultStarterDeck() {
+    static const char* DEFAULTS[] = {
+        "타격","타격","타격","타격","타격",
+        "강타","강타",
+        "정밀 사격","정밀 사격",
+        "수비","수비","수비",
+        "방어 태세","방어 태세",
+        "방벽",
+        "치유","치유","치유",
+        "숨 고르기","숨 고르기",
+        "응급 처치",
+        "집중",
+        "베어가르기",
+        "무모한 휘두르기",
+        "전투 함성"
+    };
+    static const int N = 25;
+    CardRegistry& reg = CardRegistry::instance();
+    for (int i = 0; i < N; ++i) {
+        Card c;
+        if (reg.findByName(DEFAULTS[i], c)) pool.addCard(c);
+    }
+}
+
+// 카드를 덱에 추가하고 해금 목록에 등록 후 저장
+void Game::addCardAndUnlock(const Card& c) {
+    pool.addCard(c);
+    if (unlocks.unlock(c.getName()))
+        unlocks.save();
+}
+
+// 공용 카드 또는 파티 트랙에 맞는 카드를 레지스트리에서 랜덤 선택
+bool Game::pickRandomValidCard(Card& out) const {
     CardRegistry& reg = CardRegistry::instance();
 
-    // 공용 카드 목록
+    // 유효 후보 수집
+    DynamicArray<Card> pool_candidates;
+    for (int i = 0; i < reg.size(); ++i) {
+        Card c;
+        if (!reg.getAt(i, c)) continue;
+        if (c.getId() == 32) continue;  // 적 전용
+        if (c.getTrack() == Track::None) {
+            pool_candidates.pushBack(c);
+            continue;
+        }
+        for (int p = 0; p < MAX_CHARACTERS; ++p) {
+            if (party[p].hasTrack(c.getTrack())) {
+                pool_candidates.pushBack(c);
+                break;
+            }
+        }
+    }
+    if (pool_candidates.size() == 0) return false;
+    out = pool_candidates[rand() % pool_candidates.size()];
+    return true;
+}
+
+void Game::selectStartingDeck() {
+    static const int W = 58;
+    CardRegistry& reg = CardRegistry::instance();
+
+    // ── 첫 게임: 해금 카드 없음 → 기본 덱 자동 지급 ───────────────────────
+    if (unlocks.isEmpty()) {
+        buildDefaultStarterDeck();
+        // 덱 카드 전부 해금 (중복 제외)
+        for (int i = 0; i < pool.size(); ++i) {
+            Card c; pool.getCard(i, c);
+            unlocks.unlock(c.getName());
+        }
+        unlocks.save();
+
+        UI::clear();
+        std::cout << "\n";
+        UI::boxTop(W);
+        UI::boxCenter("★  첫 번째 탐험  ★", W);
+        UI::boxMid(W);
+        UI::boxLeft("처음이라 기본 덱이 자동 지급됩니다.", W);
+        UI::boxLeft("탐험 중 카드를 획득하면 해금됩니다.", W);
+        UI::boxLeft("다음 게임부터 해금 카드로 덱을 구성!", W);
+        UI::boxDiv(W);
+        for (int i = 0; i < pool.size(); ++i) {
+            Card c; pool.getCard(i, c);
+            UI::boxLeft("  " + std::to_string(i + 1) + ".  " + c.getName(), W);
+        }
+        UI::boxBot(W);
+        std::cout << "\n";
+        UI::pause();
+        return;
+    }
+
+    // ── 이후 게임: 해금 목록에서 픽 ────────────────────────────────────────
+
+    // 해금된 공용 카드
     DynamicArray<Card> commonCards;
     for (int i = 0; i < reg.size(); ++i) {
         Card c;
         if (!reg.getAt(i, c)) continue;
-        if (c.getId() == 32) continue;         // enemy-only
-        if (c.getTrack() == Track::None) commonCards.pushBack(c);
+        if (c.getId() == 32) continue;
+        if (c.getTrack() == Track::None && unlocks.isUnlocked(c.getName()))
+            commonCards.pushBack(c);
     }
 
-    // 각 캐릭터별 트랙 카드 목록
+    // 해금된 트랙 카드 (파티 캐릭터 트랙 기준)
     DynamicArray<Card> trackCards[MAX_CHARACTERS];
     for (int p = 0; p < MAX_CHARACTERS; ++p) {
         Track t = party[p].getTrack();
         for (int i = 0; i < reg.size(); ++i) {
             Card c;
             if (!reg.getAt(i, c)) continue;
-            if (c.getTrack() == t) trackCards[p].pushBack(c);
+            if (c.getTrack() == t && unlocks.isUnlocked(c.getName()))
+                trackCards[p].pushBack(c);
         }
     }
 
-    // 단계 1: 공용 카드 10장
-    pickPhase(pool, commonCards, 10, "Common  (pick 10)");
+    // 해금 현황 안내
+    UI::clear();
+    std::cout << "\n";
+    UI::boxTop(W);
+    UI::boxCenter("DECK BUILD  --  해금 카드로 25장 구성", W);
+    UI::boxMid(W);
+    std::string info = "해금 카드: " + std::to_string(unlocks.size()) + "종";
+    UI::boxLeft(info, W);
+    UI::boxBot(W);
+    std::cout << "\n";
+    UI::pause();
 
-    // 단계 2~4: 캐릭터별 트랙 카드 5장
+    // 공용 카드 10장 선택
+    pickPhase(pool, commonCards, 10, "공용 카드  (pick 10)");
+
+    // 트랙 카드 캐릭터별 5장
     for (int p = 0; p < MAX_CHARACTERS; ++p) {
-        std::string label = party[p].getName()
-                          + " [" + trackToString(party[p].getTrack()) + "]"
-                          + "  (pick 5)";
-        pickPhase(pool, trackCards[p], 5, label);
+        if (trackCards[p].size() == 0) {
+            // 해금된 트랙 카드 없으면 공용에서 추가 선택
+            std::string label = party[p].getName()
+                              + " ── 해금 트랙 카드 없음, 공용에서  (pick 5)";
+            pickPhase(pool, commonCards, 5, label);
+        } else {
+            std::string label = party[p].getName()
+                              + " [" + trackToString(party[p].getTrack()) + "]"
+                              + "  (pick 5)";
+            pickPhase(pool, trackCards[p], 5, label);
+        }
     }
 
     // 완료 안내
-    static const int W = 58;
     UI::clear();
     std::cout << "\n";
     UI::boxTop(W);
@@ -246,7 +357,7 @@ void Game::handleBattle(bool isBoss) {
         return;
     }
 
-    Battle battle(party, MAX_CHARACTERS, pool, &inventory);
+    Battle battle(party, MAX_CHARACTERS, pool, &inventory, &unlocks);
 
     if (isBoss) {
         EnemyDef def;
@@ -294,11 +405,12 @@ void Game::applyOutcome(const EventOutcome& out) {
             std::cout << "  Party took " << out.value << " damage\n";
             break;
         case OutcomeType::AddCard: {
-            CardRegistry& creg = CardRegistry::instance();
             Card c;
-            if (creg.size() > 0 && creg.getAt(rand() % creg.size(), c)) {
-                pool.addCard(c);
-                std::cout << "  Card gained: [" << c.getName() << "]\n";
+            if (pickRandomValidCard(c)) {
+                bool isNew = !unlocks.isUnlocked(c.getName());
+                addCardAndUnlock(c);
+                std::cout << "  카드 획득: [" << c.getName() << "]"
+                          << (isNew ? "  ★신규 해금!" : "") << "\n";
             }
             break;
         }
@@ -318,10 +430,6 @@ void Game::applyOutcome(const EventOutcome& out) {
                 std::cout << "  Invalid -- skipped.\n";
             break;
         }
-        case OutcomeType::GainGold:
-            break;
-        case OutcomeType::LoseGold:
-            break;
         case OutcomeType::OpenShop:
             handleShop();
             break;
@@ -365,11 +473,12 @@ void Game::handleShop() {
         int choice = std::stoi(line);
 
         if (choice == 0) {
-            CardRegistry& creg = CardRegistry::instance();
             Card c;
-            if (creg.size() > 0 && creg.getAt(rand() % creg.size(), c)) {
-                pool.addCard(c);
-                std::cout << "  Card added: [" << c.getName() << "]\n";
+            if (pickRandomValidCard(c)) {
+                bool isNew = !unlocks.isUnlocked(c.getName());
+                addCardAndUnlock(c);
+                std::cout << "  카드 획득: [" << c.getName() << "]"
+                          << (isNew ? "  ★신규 해금!" : "") << "\n";
             }
             break;
         } else if (choice >= 1 && choice <= SHOP_SIZE) {
