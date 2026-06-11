@@ -152,51 +152,55 @@ inline void banner(const std::string& line1, const std::string& line2 = "") {
 
 // ── 전체 도움말 ───────────────────────────────────────────────────────────────
 inline void printHelp() {
-    static const int HW = 56;
+    static const int HW = 54;
     std::cout << "\n";
     boxTop(HW);
-    boxCenter("[ 명령어 도움말 ]", HW);
+    boxCenter("명령어 도움말", HW);
+    boxMid(HW);
+
+    boxCenter("타이틀 화면", HW);
     boxDiv(HW);
-    boxCenter("타이틀", HW);
+    boxLeft("N / L        새 게임 / 덱 불러오기", HW);
+
+    boxMid(HW);
+    boxCenter("덱 구성  ─  카드 선택 단계", HW);
     boxDiv(HW);
-    boxLeft("N          새 게임 시작", HW);
-    boxLeft("L          저장된 덱 불러오기", HW);
-    boxDiv(HW);
-    boxCenter("덱 불러오기", HW);
-    boxDiv(HW);
-    boxLeft("[번호]     슬롯 선택 후 파티+덱 복원", HW);
-    boxLeft("d <번호>   해당 슬롯 삭제", HW);
-    boxLeft("n          취소 (새 게임으로)", HW);
-    boxDiv(HW);
-    boxCenter("덱 구성", HW);
-    boxDiv(HW);
-    boxLeft("[번호]     카드 선택", HW);
-    boxLeft("u/undo     마지막 선택 되돌리기", HW);
+    boxLeft("[번호]       카드 선택", HW);
+    boxLeft("u / undo     마지막 선택 취소", HW);
     boxLeft("save <이름>  현재 덱을 슬롯에 저장", HW);
-    boxDiv(HW);
+
+    boxMid(HW);
     boxCenter("맵 이동", HW);
     boxDiv(HW);
-    boxLeft("w/a/s/d    이동 (위/왼쪽/아래/오른쪽)", HW);
-    boxLeft("u/undo     마지막 이동 취소 (Stack)", HW);
-    boxLeft("l/look     맵 + 파티 상태 새로고침", HW);
-    boxLeft("g/graph    던전 그래프 보기 (DFS)", HW);
-    boxLeft("i/inv      인벤토리 확인", HW);
-    boxLeft("q          대기 (이동 없음)", HW);
-    boxLeft("h/help     이 도움말 표시", HW);
+    boxLeft("w/a/s/d      방향 이동", HW);
+    boxLeft("u / undo     마지막 이동 취소", HW);
+    boxLeft("l / look     맵 + 파티 상태 새로고침", HW);
+    boxLeft("g / graph    던전 그래프 (DFS)", HW);
+    boxLeft("i / inv      인벤토리 확인", HW);
+    boxLeft("h / help     도움말", HW);
+
+    boxMid(HW);
+    boxCenter("전투  ─  카드 배정", HW);
     boxDiv(HW);
-    boxCenter("전투 (카드 배정)", HW);
+    boxLeft("[번호]       카드를 현재 캐릭터에 배정", HW);
+    boxLeft("u / undo     마지막 배정 취소", HW);
+    boxLeft("use          포션 사용", HW);
+    boxLeft("switch       포진 교체 (전열↔후열, 턴 소모)", HW);
+    boxLeft("l / look     전투 상태 + 손패 새로고침", HW);
+    boxLeft("★            카드 앞 별표 = 현재 캐릭터 트랙 일치", HW);
+
+    boxMid(HW);
+    boxCenter("전투 보상  ─  카드 교체", HW);
     boxDiv(HW);
-    boxLeft("[번호]     해당 카드를 캐릭터에 배정", HW);
-    boxLeft("use        인벤토리 포션 사용", HW);
-    boxLeft("switch     포진 교체 (턴 소모)", HW);
-    boxLeft("l/look     전투 상태 + 손패 새로고침", HW);
-    boxLeft("u/undo     마지막 카드 배정 취소", HW);
-    boxLeft("h/help     이 도움말 표시", HW);
-    boxDiv(HW);
+    boxLeft("r            덱의 카드와 교체 (25장 유지)", HW);
+    boxLeft("s            건너뜀", HW);
+
+    boxMid(HW);
     boxCenter("상점 / 휴식", HW);
     boxDiv(HW);
-    boxLeft("[번호]     아이템/옵션 선택", HW);
-    boxLeft("q          상점 건너뜀", HW);
+    boxLeft("[번호]       아이템 선택", HW);
+    boxLeft("q            건너뜀", HW);
+
     boxBot(HW);
     std::cout << "\n";
 }

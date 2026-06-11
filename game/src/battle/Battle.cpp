@@ -477,6 +477,11 @@ void Battle::assignPhase() {
             std::cout << "\n";
             assignStack.push({ci, idx, selected});
             ++ci;
+            // 다음 살아있는 캐릭터로 스킵 후 손패 갱신 (트랙별 ★ 반영)
+            int nextCi = ci;
+            while (nextCi < partySize && !party[nextCi]->isAlive()) ++nextCi;
+            if (nextCi < partySize && !hand.isEmpty())
+                printHand(nextCi);
         } else {
             std::cout << "  잘못된 카드 번호.\n";
         }

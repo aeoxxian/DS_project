@@ -37,8 +37,13 @@ void CardPool::print() const {
     auto* node = cards.getHead();
     int i = 0;
     while (node) {
-        std::cout << "  " << i++ << ". " << node->value.getName()
-                  << "  " << node->value.getDescription() << "\n";
+        const Card& c = node->value;
+        std::string trackStr = (c.getTrack() == Track::None)
+                               ? "[공용]"
+                               : "[" + trackToString(c.getTrack()) + "]";
+        std::cout << "  " << i++ << ". " << c.getName()
+                  << "  " << trackStr
+                  << "  " << c.getDescription() << "\n";
         node = node->next;
     }
 }

@@ -49,8 +49,8 @@ private:
     void removeSelectedCardFromDeck();
 
 public:
-    Game();
-    void run();
+    Game(bool isRetry = false);
+    bool run();  // true = 재도전 선택
 };
 
 #endif
