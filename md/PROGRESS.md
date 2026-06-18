@@ -1,6 +1,6 @@
 # 진행 상황 & 자료구조 분석 — Dungeon Explorer DS PBL
 
-> 마지막 업데이트: 2026-06-11
+> 마지막 업데이트: 2026-06-18
 > 기준 파일: `docs/RUBRIC.md`
 > 분석 대상: `game/` 전체 소스 (헤더 + 구현)
 
@@ -18,7 +18,7 @@ STL 컨테이너(`vector`, `list`, `stack`, `queue`, `map` 등)는 사용하지 
 |---|----------|-----------|-----------------|---------------------|
 | 1 | **LinkedList** | `ds/LinkedList.h` | `CardPool::cards`, `Inventory::items` | `card/CardPool.cpp`, `run/Inventory.cpp` |
 | 2 | **Stack** | `ds/Stack.h` | `RunMap::history`, `Battle::assignStack`, DFS 지역 스택 | `map/RunMap.cpp`, `battle/Battle.cpp`, `map/DungeonGraph.cpp` |
-| 3 | **Queue** | `ds/Queue.h` | `Enemy::intentQueue` | `combatant/Enemy.cpp` |
+| 3 | **Queue** | `ds/Queue.h` | `Enemy::intentQueue`, `Game::handleEvent` `outcomeQueue` | `combatant/Enemy.cpp`, `run/Game.cpp` |
 | 4 | **DynamicArray** | `ds/DynamicArray.h` | `Room::items`, `Room::monsters` | `map/Room.cpp` |
 | 5 | **BST (ScoreTree)** | `ds/ScoreTree.h` + `src/ds/ScoreTree.cpp` | `Game::scoreTree` | `run/Game.cpp` |
 | 6 | **Graph (DungeonGraph)** | `map/DungeonGraph.h` + `src/map/DungeonGraph.cpp` | `RunMap::graph` (27방 4방향 인접) | `map/RunMap.cpp`, `run/Game.cpp` |
@@ -43,7 +43,7 @@ STL 컨테이너(`vector`, `list`, `stack`, `queue`, `map` 등)는 사용하지 
 > **Hand 재설계**: 손패(`Hand`)는 카드 인덱스 안정성 문제로 LinkedList에서 **고정 슬롯 배열 + `bool active[]`** 구조로 교체했다. 카드 사용 시 슬롯을 비활성화만 하므로 뒤 카드가 앞으로 밀리지 않으며, Undo 시 `restoreCard(slotIdx, card)`로 정확한 원래 슬롯에 복귀한다 (`card/CardPool.h`, `card/CardPool.cpp`).
 
 - **추가**: `CardPool::addCard` / `Inventory::addItem` → `pushBack` (`MAX_POTIONS` 초과 시 false).
-- **제거/탐색**: `CardPool::removeCard` → `removeAt`; `Inventory::removeItem` / `findItem` → `getHead()` 순회 후 이름 비교.
+- **제거/탐색**: `CardPool::removeCard` → `removeAt`; `Inventory::removeItem` / `findItem` → `getAt(i)` 루프 후 이름 비교 (Node는 private, `getHead()` 제거됨).
 - **엣지케이스**: 빈 리스트에서 `popFront` / `removeAt` / `getAt` 모두 `false` 반환, 범위 밖 인덱스 차단.
 
 ---
@@ -70,10 +70,15 @@ STL 컨테이너(`vector`, `list`, `stack`, `queue`, `map` 등)는 사용하지 
 
 `frontNode` / `rearNode` / `count` 단일 연결 FIFO.
 
-- **인스턴스**: `Enemy::intentQueue` (`combatant/Enemy.h`).
+**인스턴스 1 — `Enemy::intentQueue`** (`combatant/Enemy.h`):
 - **enqueue**: `prepareIntent()` — 다음 행동 카드 적재.
 - **dequeue + 재적재(순환)**: `executeAndQueue()` — 현재 의도 dequeue 후 실행, 다음 패턴 카드 enqueue. 패턴이 무한 순환.
 - **peek 공개**: `peekIntent()` → 전투 화면에 **카드 이름 + 설명** 동시 표시 (`battle/Battle.cpp`).
+
+**인스턴스 2 — `Queue<EventOutcome> outcomeQueue`** (`run/Game.cpp::handleEvent`):
+- 선택된 이벤트 결과(`EventOutcome`)를 전부 **enqueue** 후 **dequeue** 순서대로 처리 → FIFO 의미론 명확히 활용.
+- 선택지 1개에 복수 효과가 있을 때(예: 카드 획득 + 파티 피해) 순서 보장.
+
 - **엣지케이스**: 빈 큐 `dequeue` / `peek` → `false`. stun 시 의도 소비(패턴 진행), 행동은 스킵.
 
 ---
@@ -81,7 +86,7 @@ STL 컨테이너(`vector`, `list`, `stack`, `queue`, `map` 등)는 사용하지 
 ### 2-4. DynamicArray — `include/ds/DynamicArray.h`
 
 `data` / `sz` / `cap` 가변 배열. 용량 초과 시 `cap == 0 ? 4 : cap * 2`로 2배 증설.  
-범위 밖 접근 시 `std::exit(1)` 즉시 중단.
+`operator[]` 범위 밖 접근: 빈 배열(`sz==0`)이면 `std::exit(1)`, 아니면 **클램프**(음수→0, 초과→sz-1)로 안전 접근 보장.
 
 - **인스턴스**: `Room::items`, `Room::monsters` (`map/Room.h`).
 - **추가**: `Room::addItem` / `addEnemy` → `pushBack`.
@@ -170,8 +175,8 @@ STL `sort` 대신 직접 구현한 정렬 3종.
 | 스택 — 이전 방 ID push | ✅ | `RunMap::move` → `history.push(cur)` |
 | 스택 — undo 이동을 위한 pop | ✅ | `RunMap::undoMove` → `history.pop(prev)` |
 | 빈 스택 엣지케이스 처리 | ✅ | `pop` false → "Nothing to undo." 출력 |
-| 큐 — 게임 이벤트 enqueue | ✅ | `Enemy::prepareIntent` → `intentQueue.enqueue` |
-| 큐 — 게임 이벤트 dequeue/처리 | ✅ | `Enemy::executeAndQueue` → dequeue 후 재적재 (순환) |
+| 큐 — 게임 이벤트 enqueue | ✅ | `Enemy::prepareIntent` → `intentQueue.enqueue`; `handleEvent` → `outcomeQueue.enqueue` |
+| 큐 — 게임 이벤트 dequeue/처리 | ✅ | `Enemy::executeAndQueue` → dequeue 후 재적재(순환); `handleEvent` → `outcomeQueue.dequeue` FIFO 처리 |
 | 스모크 테스트 시도 | ✅ | `make` 빌드 성공 — 경고 0 |
 
 ### 4-3. 마일스톤 3 — 게임플레이 통합
@@ -207,7 +212,7 @@ STL `sort` 대신 직접 구현한 정렬 3종.
 | 소스코드 제출 | ✅ | `game/` |
 | 빌드 방법 포함 | ✅ | `Makefile` + `md/README.md` |
 | 빌드 성공 확인 | ✅ | `g++ -std=c++17 -Wall -Wextra -pedantic` 경고 0 |
-| 최종 보고서 제출 | ❌ | 작성 필요 |
+| 최종 보고서 제출 | ✅ | `docs/FINAL_REPORT.md` 작성 완료 |
 | 데모 영상 또는 라이브 데모 | ❌ | 시나리오 §6 참고 |
 | 팀 기여도 명세 포함 | ❌ | 작성 필요 |
 | AI/외부 도움 공시 포함 | ❌ | 작성 필요 |
@@ -274,4 +279,4 @@ STL `sort` 대신 직접 구현한 정렬 3종.
 | 골드 시스템 제거 → 무료 보급 | `run/Game.cpp` `handleShop` | 카드 or 포션 1개 무료 선택, `int gold` 멤버 삭제 |
 | 던전 맵 + 4방향 그래프 DFS | `map/RunMap.cpp`, `map/DungeonGraph.cpp` | 3층 진행 + 현재 층만 표시 + `g/graph` DFS 출력 |
 | 런 종료 통계·랭킹 | `run/Game.cpp` `printRunSummary` | DFS 맵 + 삽입정렬 전투 통계 + BST 효율 랭킹 + 딜량/카드 순위 |
-| 전체 UI 영어 번역 | `battle/Battle.cpp`, `map/RunMap.cpp` 외 | 전투·맵 모든 출력 English |
+| UI 한국어 통일 | `map/Room.cpp` 외 | 방 설명 등 모든 출력 한국어(UTF-8) |

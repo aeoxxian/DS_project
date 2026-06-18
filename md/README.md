@@ -112,6 +112,7 @@ main()
 | `i` / `inv` | 인벤토리 확인 |
 | `u` / `undo` | 이전 방으로 되돌리기 (Stack::pop) |
 | `g` / `graph` | 던전 그래프 DFS 출력 |
+| `save <이름>` | 현재 덱·파티 구성을 프리셋으로 저장 |
 | `h` / `help` | 명령어 목록 |
 
 ### 전투 카드 배정
@@ -138,8 +139,8 @@ STL 컨테이너 사용 금지. 모든 컨테이너는 `include/ds/` 또는 `inc
 |----------|------|------|-------------|
 | LinkedList | `ds/LinkedList.h` | 헤더 전용 | `CardPool` 공유 덱, `Inventory` 포션 목록 |
 | Stack | `ds/Stack.h` | 헤더 전용 | RunMap 이동 Undo, Battle 카드 배정 Undo, DungeonGraph DFS |
-| Queue | `ds/Queue.h` | 헤더 전용 | Enemy 행동 패턴 순환 (`Queue<Card>`) |
-| DynamicArray | `ds/DynamicArray.h` | 헤더 전용 | `Room` 내 아이템·적 목록 |
+| Queue | `ds/Queue.h` | 헤더 전용 | Enemy 행동 패턴 순환 (`Queue<Card>`), 이벤트 결과 FIFO 처리 (`Queue<EventOutcome>`) |
+| DynamicArray | `ds/DynamicArray.h` | 헤더 전용 | `Room` 내 아이템·적 목록 (빈 배열 exit, 범위 초과 클램프) |
 | ScoreTree (BST) | `ds/ScoreTree.h` | `ds/ScoreTree.cpp` | 전투 효율 점수 랭킹 |
 | DungeonGraph | `map/DungeonGraph.h` | `map/DungeonGraph.cpp` | 4방향 인접 배열 그래프 + DFS |
 | Sorting | `ds/Sorting.h` | `ds/Sorting.cpp` | 인벤토리·전투 통계·점수 정렬 |
@@ -259,12 +260,12 @@ reg.registerEvent(e);
 
 - [x] 캐릭터 6종 등록 완료 (이민준/김서연/박준서/최유진/정하은/한승준)
 - [x] 몬스터 15종 + 이벤트 6종 등록 완료
-- [x] 전체 UI 영어 번역 완료
+- [x] UI 전체 한국어(UTF-8) 통일
 - [x] 빌드 경고 0
 
 ### 제출 문서
 
-- [ ] 최종 보고서 (자료구조 설명·복잡도·테스트·한계·기여도·회고)
+- [x] 최종 보고서 (`docs/FINAL_REPORT.md` 완성)
 - [ ] 팀 기여도 명세
 - [ ] AI/외부 도움 공시
 - [ ] 데모 리허설 — 빌드 무개입 실행, 각 자료구조 코드에서 설명, 엣지케이스 시연
@@ -276,7 +277,7 @@ reg.registerEvent(e);
 | 항목 | 배점 | 상태 |
 |------|------|------|
 | 자료구조 정확성 | 30 | LinkedList·Stack·Queue·DynamicArray·BST·Graph·Sorting 모두 직접 구현, 엣지케이스 처리, 소멸자 완비 |
-| 자료구조 통합 | 25 | CardPool·Inventory(LinkedList), RunMap·Battle Undo(Stack), Enemy intent(Queue), Room(DynamicArray), ScoreTree(BST), 이동·DFS(Graph), 런 요약(Sorting) — 모두 실게임에서 호출됨 |
+| 자료구조 통합 | 25 | CardPool·Inventory(LinkedList), RunMap·Battle Undo(Stack), Enemy intent·이벤트 결과(Queue 이중), Room(DynamicArray), ScoreTree(BST), 이동·DFS(Graph), 런 요약(Sorting) — 모두 실게임에서 호출됨 |
 | 완성도 & 안정성 | 20 | 빌드 성공·경고 0, 입력 검증, 덱 빌딩 화면, 전투·이벤트·휴식·보스 완전 구현 |
 | 코드 품질 & 모듈성 | 15 | include/src 분리, 레지스트리 기반 콘텐츠, 공용 resolveCard(), Constants.h 단일 상수 |
 | 창의적 확장 & 발표 | 10 | 6트랙 시스템, 25장 덱 빌딩, 영구 스탯 부스트, 적 행동 카드명+설명 예고, 신소재 파티 방어막 |
