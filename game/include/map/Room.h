@@ -46,7 +46,6 @@ public:
     void enter(BattleCharacter characters[], int count, CardPool& pool);
 private:
     void healOption(BattleCharacter characters[], int count);
-    void upgradeOption(CardPool& pool);
 };
 
 #endif

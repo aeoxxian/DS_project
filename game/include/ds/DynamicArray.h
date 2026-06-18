@@ -49,17 +49,15 @@ public:
     }
 
     T& operator[](int index) {
-        if (index < 0 || index >= sz) {
-            std::cerr << "[DynamicArray] index " << index << " out of range (size=" << sz << ")\n";
-            std::exit(1);
-        }
+        if (sz == 0) { std::cerr << "[DynamicArray] operator[] on empty array\n"; std::exit(1); }
+        if (index < 0) index = 0;
+        if (index >= sz) index = sz - 1;
         return data[index];
     }
     const T& operator[](int index) const {
-        if (index < 0 || index >= sz) {
-            std::cerr << "[DynamicArray] index " << index << " out of range (size=" << sz << ")\n";
-            std::exit(1);
-        }
+        if (sz == 0) { std::cerr << "[DynamicArray] operator[] on empty array\n"; std::exit(1); }
+        if (index < 0) index = 0;
+        if (index >= sz) index = sz - 1;
         return data[index];
     }
 

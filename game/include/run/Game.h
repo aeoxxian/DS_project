@@ -30,8 +30,8 @@ private:
     UnlockSave  unlocks;
     DeckSave    deckSave;
 
-    bool showTitleScreen();      // true = 불러오기 모드
-    bool tryLoadPreset();        // 슬롯 UI → party+deck 복원. 성공 시 true
+    int  showTitleScreen();       // 0=기본덱 / 1=해금덱 / 2=프리셋 로드 완료
+    bool tryLoadPreset(int idx); // 슬롯 idx → party+deck 복원. 성공 시 true
     void selectParty();
     void selectStartingDeck();
     void buildDefaultStarterDeck();
@@ -47,6 +47,7 @@ private:
     void printRunSummary() const;
     void applyOutcome(const EventOutcome& out);
     void removeSelectedCardFromDeck();
+    void showRunResult(bool alive) const;
 
 public:
     Game(bool isRetry = false);

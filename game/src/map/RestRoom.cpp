@@ -1,6 +1,7 @@
 #include "map/Room.h"
 #include "core/UI.h"
 #include <iostream>
+#include <sstream>
 
 static const int W               = 56;
 static const int REST_HEAL_AMOUNT = 20;
@@ -28,14 +29,22 @@ void RestRoom::enter(BattleCharacter characters[], int count, CardPool& pool) {
     int choice = safeInt(line, 0);
 
     if (choice == 1 || choice == 2) {
-        std::cout << "\n  캐릭터 목록:\n";
+        std::cout << "\n";
+        UI::boxTop(W);
+        UI::boxCenter("캐릭터 선택", W);
+        UI::boxDiv(W);
         for (int i = 0; i < count; ++i) {
             if (!characters[i].isAlive()) continue;
-            std::cout << "  [" << i << "] " << characters[i].getName()
-                      << "  ATK:" << characters[i].getAttackPower()
-                      << "  DEF:" << characters[i].getDefend() << "\n";
+            std::string name = characters[i].getName();
+            int namePad = std::max(0, 10 - UI::displayWidth(name));
+            std::ostringstream row;
+            row << "  [" << i << "]  " << name << std::string(namePad, ' ')
+                << "  공" << characters[i].getAttackPower()
+                << "  방" << characters[i].getDefend();
+            UI::boxLeft(row.str(), W);
         }
-        std::cout << "  캐릭터 번호 > ";
+        UI::boxBot(W);
+        std::cout << "\n  캐릭터 번호 > ";
         std::string charLine;
         std::getline(std::cin, charLine);
         int ci = safeInt(charLine, -1);
@@ -62,7 +71,3 @@ void RestRoom::healOption(BattleCharacter characters[], int count) {
     std::cout << "\n";
 }
 
-void RestRoom::upgradeOption(CardPool& pool) {
-    (void)pool;
-    // Replaced by permanent stat boost in enter()
-}

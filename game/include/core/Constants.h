@@ -28,6 +28,9 @@ static const int MAX_CHILDREN  = 3;
 
 // ── Map (그래프) ──────────────────────────────────────────────────────────────
 static const int MAX_ROOMS     = 32;
+static const int MAP_FLOORS    = 3;
+static const int MAP_ROWS      = 3;
+static const int MAP_COLS      = 3;
 
 // ── Registries ────────────────────────────────────────────────────────────────
 static const int MAX_REGISTRY_SIZE         = 256;

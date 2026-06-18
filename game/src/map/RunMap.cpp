@@ -6,7 +6,7 @@
 // ── 고정 레이아웃 (PDF 명세) ──────────────────────────────────────────────────
 // [floor][row][col]   row 0 = 상단, col 0 = 좌측
 
-const RoomType RunMap::LAYOUT[3][3][3] = {
+const RoomType RunMap::LAYOUT[MAP_FLOORS][MAP_ROWS][MAP_COLS] = {
     // 1층
     {{ RoomType::Start,  RoomType::Event,  RoomType::Battle },
      { RoomType::Rest,   RoomType::Battle, RoomType::Battle },
@@ -53,9 +53,9 @@ static const char* roomSymbol(RoomType t) {
 
 void RunMap::buildGraph() {
     // 방 27개 등록: floor*9 + row*3 + col 순서
-    for (int f = 0; f < 3; ++f)
-        for (int r = 0; r < 3; ++r)
-            for (int c = 0; c < 3; ++c)
+    for (int f = 0; f < MAP_FLOORS; ++f)
+        for (int r = 0; r < MAP_ROWS; ++r)
+            for (int c = 0; c < MAP_COLS; ++c)
                 graph.addRoom(
                     std::string(roomLabel(LAYOUT[f][r][c])) +
                     " F" + std::to_string(f + 1) +
@@ -63,23 +63,23 @@ void RunMap::buildGraph() {
                     "");
 
     // 층 내 상하좌우 연결 (단방향 × 2 = 양방향)
-    for (int f = 0; f < 3; ++f)
-        for (int r = 0; r < 3; ++r)
-            for (int c = 0; c < 3; ++c) {
+    for (int f = 0; f < MAP_FLOORS; ++f)
+        for (int r = 0; r < MAP_ROWS; ++r)
+            for (int c = 0; c < MAP_COLS; ++c) {
                 int id = roomId(f, r, c);
-                if (r > 0) graph.connectRooms(id, Direction::North, roomId(f, r-1, c), false);
-                if (r < 2) graph.connectRooms(id, Direction::South, roomId(f, r+1, c), false);
-                if (c > 0) graph.connectRooms(id, Direction::West,  roomId(f, r, c-1), false);
-                if (c < 2) graph.connectRooms(id, Direction::East,  roomId(f, r, c+1), false);
+                if (r > 0)              graph.connectRooms(id, Direction::North, roomId(f, r-1, c), false);
+                if (r < MAP_ROWS - 1)   graph.connectRooms(id, Direction::South, roomId(f, r+1, c), false);
+                if (c > 0)              graph.connectRooms(id, Direction::West,  roomId(f, r, c-1), false);
+                if (c < MAP_COLS - 1)   graph.connectRooms(id, Direction::East,  roomId(f, r, c+1), false);
             }
 }
 
 // ── 생성자 ────────────────────────────────────────────────────────────────────
 
 RunMap::RunMap() : cur(0, 0, 0) {
-    for (int f = 0; f < 3; ++f)
-        for (int r = 0; r < 3; ++r)
-            for (int c = 0; c < 3; ++c)
+    for (int f = 0; f < MAP_FLOORS; ++f)
+        for (int r = 0; r < MAP_ROWS; ++r)
+            for (int c = 0; c < MAP_COLS; ++c)
                 cleared[f][r][c] = false;
     cleared[0][0][0] = true;  // 1층 시작방은 방문 처리
     buildGraph();
@@ -114,7 +114,7 @@ bool RunMap::undoMove() {
 }
 
 bool RunMap::advanceFloor() {
-    if (!isAtStairs() || cur.floor >= 2) return false;
+    if (!isAtStairs() || cur.floor >= MAP_FLOORS - 1) return false;
     history.push(cur);
     cur = Position(cur.floor + 1, 0, 0);
     cleared[cur.floor][0][0] = true;  // 다음 층 시작방 방문 처리
@@ -132,30 +132,35 @@ void     RunMap::clearCurrent()       { cleared[cur.floor][cur.row][cur.col] = t
 // ── 출력 ─────────────────────────────────────────────────────────────────────
 
 void RunMap::printMap() const {
+    static const int W = 50;
     int f = cur.floor;
-    std::cout << "  ════════════════\n";
-    std::cout << "  FLOOR " << (f + 1) << "\n";
-    std::cout << "  ────────────────\n";
 
+    auto cell = [&](int r, int c) -> std::string {
+        bool here = (cur.row == r && cur.col == c);
+        bool done = cleared[f][r][c]
+                    && LAYOUT[f][r][c] != RoomType::Start
+                    && LAYOUT[f][r][c] != RoomType::Stairs;
+        if (here) return "[ @ ]";
+        if (done) return "[ * ]";
+        return std::string("[") + roomSymbol(LAYOUT[f][r][c]) + "]";
+    };
+
+    std::cout << "\n";
+    UI::boxTop(W);
+    UI::boxCenter(std::to_string(f + 1) + "층  |  지식의 상아탑", W);
+    UI::boxDiv(W);
+    UI::boxEmpty(W);
     for (int r = 0; r < 3; ++r) {
-        std::cout << "  ";
-        for (int c = 0; c < 3; ++c) {
-            bool here = (cur.row == r && cur.col == c);
-            if (here)
-                std::cout << "[ P ]";
-            else if (cleared[f][r][c] && LAYOUT[f][r][c] != RoomType::Start
-                                      && LAYOUT[f][r][c] != RoomType::Stairs)
-                std::cout << "[ * ]";
-            else
-                std::cout << "[" << roomSymbol(LAYOUT[f][r][c]) << "]";
-        }
-        std::cout << "\n";
+        UI::boxLeft("  " + cell(r,0) + "---" + cell(r,1) + "---" + cell(r,2), W);
+        if (r < 2) UI::boxLeft("    |       |       |", W);
     }
-
-    std::cout << "  ────────────────\n";
-    std::cout << "  S=start B=battle E=event R=rest ^=stairs X=boss *=cleared P=you\n";
-    std::cout << "  Move: w=up  s=down  a=left  d=right   u=undo   h=help\n";
-    std::cout << "  ════════════════\n\n";
+    UI::boxEmpty(W);
+    UI::boxDiv(W);
+    UI::boxLeft("  @현재  *완료  B전투  E이벤트", W);
+    UI::boxLeft("  R휴식  ^계단  X보스  S시작", W);
+    UI::boxLeft("  w/a/s/d 이동    u 취소    h 도움말", W);
+    UI::boxBot(W);
+    std::cout << "\n";
 }
 
 void RunMap::printGraph() const {

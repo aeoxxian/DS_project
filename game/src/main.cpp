@@ -104,6 +104,7 @@ int main() {
     }
 
     UI::clear();
-    std::cout << "\n  \xea\xb2\x8c\xec\x9e\x84\xec\x9d\x84 \xec\xa2\x85\xeb\xa3\x8c\xed\x95\xa9\xeb\x8b\x88\xeb\x8b\xa4.\n\n";
+    std::cout << "\n  자퇴 처리가 완료되었습니다.\n";
+    std::cout << "  탑은 내년에도 열립니다.\n\n";
     return 0;
 }

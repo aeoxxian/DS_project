@@ -2,18 +2,18 @@
 #include <iostream>
 #include <cstdlib>
 
-Enemy::Enemy() : Combatant(), cardCount(0), patternIndex(0) {}
+Enemy::Enemy() : Combatant(), cardCount(0), patternIndex(0), boss(false) {}
 
 Enemy::Enemy(const std::string& name, int maxHP, int atk,
              int def, Track track)
-    : Combatant(name, maxHP, atk, def, track), cardCount(0), patternIndex(0) {
+    : Combatant(name, maxHP, atk, def, track), cardCount(0), patternIndex(0), boss(false) {
     Card defaultAtk(0, "공격", "기본 공격", Track::None, TargetScope::Single);
     defaultAtk.addEffect(Effect(EffectType::Attack, atk));
     cards[cardCount++] = defaultAtk;
 }
 
 Enemy::Enemy(const EnemyDef& def)
-    : Combatant(def), cardCount(def.cardCount), patternIndex(0) {
+    : Combatant(def), cardCount(def.cardCount), patternIndex(0), boss(def.isBoss) {
     for (int i = 0; i < def.cardCount; ++i) cards[i] = def.cards[i];
     if (cardCount == 0) {
         Card defaultAtk(0, "공격", "기본 공격", Track::None, TargetScope::Single);

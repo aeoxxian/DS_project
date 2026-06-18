@@ -27,17 +27,55 @@ inline void pause() {
     std::getline(std::cin, s);
 }
 
-// UTF-8 display width: Korean/CJK 3-byte chars = 2 columns, ASCII = 1
+// UTF-8 display width: Korean/CJK = 2 cols, ASCII/box-drawing/block-elements = 1 col
 inline int displayWidth(const std::string& s) {
     int w = 0;
     for (size_t i = 0; i < s.size(); ) {
         unsigned char c = (unsigned char)s[i];
-        if      (c < 0x80) { i += 1; w += 1; }
+        if (c < 0x80) { i += 1; w += 1; }
         else if (c < 0xE0) { i += 2; w += 1; }
-        else if (c < 0xF0) { i += 3; w += 2; }  // Korean/CJK
-        else               { i += 4; w += 2; }
+        else if (c < 0xF0) {
+            unsigned char b2 = (i+1 < s.size()) ? (unsigned char)s[i+1] : 0;
+            // Narrow 1-cell sequences within E2 prefix:
+            //   E2 94/95 = box-drawing (─║╔╗…)
+            //   E2 96 80-9F = block elements (█░▒▓)
+            //   E2 9C-9E = dingbats (✗✓…)
+            bool narrow = (c == 0xE2) && (
+                b2 == 0x94 || b2 == 0x95
+                || (b2 == 0x96 && i+2 < s.size() && (unsigned char)s[i+2] <= 0x9F)
+                || b2 == 0x9C || b2 == 0x9D || b2 == 0x9E
+            );
+            i += 3; w += (narrow ? 1 : 2);
+        }
+        else { i += 4; w += 2; }
     }
     return w;
+}
+
+// Truncate s so displayWidth <= maxW, appending "..." if cut
+inline std::string truncToWidth(const std::string& s, int maxW) {
+    if (maxW <= 3 || displayWidth(s) <= maxW) return s;
+    int w = 0;
+    for (size_t i = 0; i < s.size(); ) {
+        unsigned char c = (unsigned char)s[i];
+        int cl; int cw;
+        if (c < 0x80)      { cl = 1; cw = 1; }
+        else if (c < 0xE0) { cl = 2; cw = 1; }
+        else if (c < 0xF0) {
+            cl = 3;
+            unsigned char b2 = (i+1 < s.size()) ? (unsigned char)s[i+1] : 0;
+            bool narrow = (c == 0xE2) && (
+                b2 == 0x94 || b2 == 0x95
+                || (b2 == 0x96 && i+2 < s.size() && (unsigned char)s[i+2] <= 0x9F)
+                || b2 == 0x9C || b2 == 0x9D || b2 == 0x9E
+            );
+            cw = narrow ? 1 : 2;
+        }
+        else { cl = 4; cw = 2; }
+        if (w + cw > maxW - 3) return s.substr(0, i) + "...";
+        w += cw; i += cl;
+    }
+    return s;
 }
 
 // ── 텍스트 효과 ───────────────────────────────────────────────────────────────
@@ -111,6 +149,11 @@ inline void boxLeft(const std::string& s, int w = 58) {
     std::cout << "  ║  " << s << std::string(pad, ' ') << "║\n";
 }
 
+// 왼쪽 정렬 — 넘치면 "..." 자동 절단
+inline void boxLeftTrunc(const std::string& s, int w = 58) {
+    boxLeft(truncToWidth(s, w - 2), w);
+}
+
 // 가운데 정렬
 inline void boxCenter(const std::string& s, int w = 58) {
     int total = w - displayWidth(s);
@@ -158,9 +201,11 @@ inline void printHelp() {
     boxCenter("명령어 도움말", HW);
     boxMid(HW);
 
-    boxCenter("타이틀 화면", HW);
+    boxCenter("게임 시작", HW);
     boxDiv(HW);
-    boxLeft("N / L        새 게임 / 덱 불러오기", HW);
+    boxLeft("Y / N        저장 불러오기 / 새 게임 (기본 덱)", HW);
+    boxLeft("[0]          불러온 후 새 덱 구성 (해금 카드)", HW);
+    boxLeft("[번호]       저장된 프리셋 불러오기", HW);
 
     boxMid(HW);
     boxCenter("덱 구성  ─  카드 선택 단계", HW);

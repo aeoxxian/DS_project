@@ -5,14 +5,13 @@
 
 template <typename T>
 class LinkedList {
-public:
+private:
     struct Node {
         T     value;
         Node* next;
         Node(const T& v) : value(v), next(nullptr) {}
     };
 
-private:
     Node* head;
     Node* tail;
     int   count;
@@ -35,7 +34,6 @@ public:
 
     int  size()    const { return count; }
     bool isEmpty() const { return count == 0; }
-    Node* getHead() const { return head; }
 
     void pushBack(const T& value) {
         Node* node = new Node(value);

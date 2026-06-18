@@ -15,10 +15,10 @@ struct Position {
 
 class RunMap {
 private:
-    static const RoomType LAYOUT[3][3][3];
+    static const RoomType LAYOUT[MAP_FLOORS][MAP_ROWS][MAP_COLS];
 
     DungeonGraph    graph;
-    bool            cleared[3][3][3];
+    bool            cleared[MAP_FLOORS][MAP_ROWS][MAP_COLS];
     Position        cur;
     Stack<Position> history;
 

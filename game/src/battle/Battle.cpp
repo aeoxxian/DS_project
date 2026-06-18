@@ -4,8 +4,16 @@
 #include "core/UI.h"
 #include "ds/DynamicArray.h"
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <cstdlib>
+
+static int safeInt(const std::string& s, int fallback) {
+    if (s.empty() || s.size() > 9) return fallback;
+    for (char ch : s) if (ch < '0' || ch > '9') return fallback;
+    try { return std::stoi(s); } catch (...) { return fallback; }
+}
 
 Battle::Battle(BattleCharacter partyArr[], int size, CardPool& sharedPool,
                Inventory* inventory, UnlockSave* unlockSave)
@@ -221,20 +229,30 @@ void Battle::applyEffect(const Effect& e, Combatant& source, int targetIdx, bool
 }
 
 void Battle::drawPhase() {
-    int drawn = 0, poolSize = pool.size();
+    int poolSize = pool.size();
     int drawCount = DRAW_PER_TURN + pendingDrawBonus;
     pendingDrawBonus = 0;
     if (poolSize == 0) return;
-    for (int attempt = 0; drawn < drawCount && hand.slotSize() < MAX_HAND_SIZE
-                          && attempt < poolSize * 2; ++attempt) {
-        Card card;
-        if (pool.getCard(rand() % poolSize, card)) { hand.addCard(card); ++drawn; }
+
+    bool usedSlot[MAX_POOL_SIZE] = {};
+    int drawn = 0, attempts = 0;
+    while (drawn < drawCount && hand.slotSize() < MAX_HAND_SIZE && attempts < poolSize * 3) {
+        int idx = rand() % poolSize;
+        if (!usedSlot[idx]) {
+            Card card;
+            if (pool.getCard(idx, card)) {
+                hand.addCard(card);
+                usedSlot[idx] = true;
+                ++drawn;
+            }
+        }
+        ++attempts;
     }
     std::cout << "  드로우: " << drawn << "장  (손패: " << hand.size() << ")\n";
 }
 
 void Battle::displayBattleState() const {
-    static const int W = 60;
+    static const int W = 74;
     std::cout << "\n";
     UI::boxTop(W);
     UI::boxCenter("[ 턴  " + std::to_string(turnNumber) + " ]", W);
@@ -260,7 +278,7 @@ void Battle::displayBattleState() const {
             + " 방" + std::to_string(c.getDefend());
         std::string st = c.getStatus().toString();
         if (!st.empty()) row += "  " + st;
-        UI::boxLeft(row, W);
+        UI::boxLeftTrunc(row, W);
     }
 
     UI::boxMid(W);
@@ -281,10 +299,10 @@ void Battle::displayBattleState() const {
             + " 방" + std::to_string(e.getDefend());
         std::string st = e.getStatus().toString();
         if (!st.empty()) row += "  " + st;
-        UI::boxLeft(row, W);
+        UI::boxLeftTrunc(row, W);
         Card intent;
         if (e.peekIntent(intent))
-            UI::boxLeft("     → [" + intent.getName() + "]  " + intent.getDescription(), W);
+            UI::boxLeftTrunc("     → [" + intent.getName() + "]  " + intent.getDescription(), W);
         else
             UI::boxLeft("     → ???", W);
     }
@@ -293,7 +311,7 @@ void Battle::displayBattleState() const {
 }
 
 void Battle::printHand(int forChar) const {
-    static const int W = 60;
+    static const int W = 74;
     std::string forLabel;
     if (forChar >= 0 && forChar < partySize && party[forChar]->isAlive())
         forLabel = party[forChar]->getName()
@@ -323,7 +341,7 @@ void Battle::printHand(int forChar) const {
                                : "[공용]";
         UI::boxLeft(prefix + c.getName() + "  " + trackTag, W);
         if (!c.getDescription().empty())
-            UI::boxLeft("        " + c.getDescription(), W);
+            UI::boxLeftTrunc("        " + c.getDescription(), W);
     }
 
     UI::boxDiv(W);
@@ -354,6 +372,7 @@ void Battle::assignPhase() {
             continue;
         }
         if (line == "l" || line == "look") {
+            UI::clear();
             displayBattleState();
             printHand(ci);
             continue;
@@ -363,8 +382,10 @@ void Battle::assignPhase() {
             if (assignStack.pop(rec)) {
                 hand.restoreCard(rec.slotIdx, rec.card);
                 party[rec.ci]->clearAssignedCard();
-                std::cout << "  되돌리기: [" << rec.card.getName() << "] ("
-                          << party[rec.ci]->getName() << ")\n";
+                UI::clear();
+                displayBattleState();
+                std::cout << "  ↩  되돌리기: [" << rec.card.getName() << "]  ←  "
+                          << party[rec.ci]->getName() << "\n";
                 printHand(rec.ci);
                 ci = rec.ci;
             } else {
@@ -381,7 +402,7 @@ void Battle::assignPhase() {
             inv->print();
             std::cout << "  아이템 번호 > ";
             std::getline(std::cin, line);
-            int itemIdx = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : -1;
+            int itemIdx = safeInt(line, -1);
             Item it;
             if (!inv->takeAt(itemIdx, it)) {
                 std::cout << "  잘못된 번호.\n";
@@ -389,10 +410,7 @@ void Battle::assignPhase() {
             }
             switch (it.getType()) {
                 case PotionType::Heal: {
-                    std::cout << "  대상 캐릭터 번호 > ";
-                    std::getline(std::cin, line);
-                    int ti = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : frontPartyIndex();
-                    if (ti < 0 || ti >= partySize || !party[ti]->isAlive()) ti = frontPartyIndex();
+                    int ti = pickLivePartyTarget();
                     if (ti >= 0) {
                         party[ti]->heal(it.getValue());
                         std::cout << "  " << party[ti]->getName() << " HP +" << it.getValue() << "\n";
@@ -400,10 +418,7 @@ void Battle::assignPhase() {
                     break;
                 }
                 case PotionType::AtkUp: {
-                    std::cout << "  대상 캐릭터 번호 > ";
-                    std::getline(std::cin, line);
-                    int ti = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : frontPartyIndex();
-                    if (ti < 0 || ti >= partySize || !party[ti]->isAlive()) ti = frontPartyIndex();
+                    int ti = pickLivePartyTarget();
                     if (ti >= 0) {
                         party[ti]->getStatus().apply("atk_up", it.getValue(), 3);
                         std::cout << "  " << party[ti]->getName() << " 공격력 +" << it.getValue() << " (3턴)\n";
@@ -411,10 +426,7 @@ void Battle::assignPhase() {
                     break;
                 }
                 case PotionType::Shield: {
-                    std::cout << "  대상 캐릭터 번호 > ";
-                    std::getline(std::cin, line);
-                    int ti = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : frontPartyIndex();
-                    if (ti < 0 || ti >= partySize || !party[ti]->isAlive()) ti = frontPartyIndex();
+                    int ti = pickLivePartyTarget();
                     if (ti >= 0) {
                         party[ti]->getStatus().apply("shield", it.getValue(), 2);
                         std::cout << "  " << party[ti]->getName() << " 방어막 +" << it.getValue() << " (2턴)\n";
@@ -424,7 +436,7 @@ void Battle::assignPhase() {
                 case PotionType::Poison: {
                     std::cout << "  대상 적 번호 > ";
                     std::getline(std::cin, line);
-                    int ei = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : firstLivingEnemy();
+                    int ei = safeInt(line, -1);
                     if (ei < 0 || ei >= enemyCount || !enemies[ei].isAlive()) ei = firstLivingEnemy();
                     if (ei >= 0) {
                         enemies[ei].getStatus().apply("poison", it.getValue(), 3);
@@ -451,7 +463,8 @@ void Battle::assignPhase() {
             std::string swapLine;
             std::getline(std::cin, swapLine);
             int a = -1, b = -1;
-            if (swapLine.size() >= 3 && swapLine[0] >= '0' && swapLine[2] >= '0') {
+            if (swapLine.size() >= 3 && swapLine[0] >= '0' && swapLine[0] <= '9'
+                                    && swapLine[2] >= '0' && swapLine[2] <= '9') {
                 a = swapLine[0] - '0';
                 b = swapLine[2] - '0';
             }
@@ -467,21 +480,27 @@ void Battle::assignPhase() {
             continue;
         }
 
-        int idx = (!line.empty() && line[0] >= '0' && line[0] <= '9') ? std::stoi(line) : -1;
+        int idx = safeInt(line, -1);
         Card selected;
         if (hand.removeCard(idx, selected)) {
             party[ci]->assignCard(selected);
             bool match = selected.isTrackCard() && party[ci]->hasTrack(selected.getTrack());
-            std::cout << "  ▶  [" << selected.getName() << "]";
-            if (match) std::cout << "   ★트랙 일치!";
-            std::cout << "\n";
+            std::string assignMsg = "  ▶  " + party[ci]->getName()
+                                    + "  →  [" + selected.getName() + "]";
+            if (match) assignMsg += "   ★트랙 일치!";
             assignStack.push({ci, idx, selected});
             ++ci;
-            // 다음 살아있는 캐릭터로 스킵 후 손패 갱신 (트랙별 ★ 반영)
+            // 다음 살아있는 캐릭터로 즉시 화면 갱신 + 손패 (트랙별 ★ 반영)
             int nextCi = ci;
             while (nextCi < partySize && !party[nextCi]->isAlive()) ++nextCi;
-            if (nextCi < partySize && !hand.isEmpty())
+            if (nextCi < partySize && !hand.isEmpty()) {
+                UI::clear();
+                displayBattleState();
+                std::cout << assignMsg << "\n";
                 printHand(nextCi);
+            } else {
+                std::cout << assignMsg << "\n";
+            }
         } else {
             std::cout << "  잘못된 카드 번호.\n";
         }
@@ -506,7 +525,7 @@ void Battle::resolveCard(const Card& card, Combatant& source, bool sourceIsPlaye
 }
 
 void Battle::executePhase() {
-    static const int W = 60;
+    static const int W = 74;
     std::cout << "\n";
     UI::boxTop(W);
     UI::boxCenter("─  행동 단계  ─", W);
@@ -585,7 +604,7 @@ void Battle::rewardPhase() {
     CardRegistry& reg = CardRegistry::instance();
     if (reg.size() == 0) return;
 
-    static const int W = 58;
+    static const int W = 74;
     std::cout << "\n";
     UI::boxTop(W);
     UI::boxCenter("전투 보상", W);
@@ -629,7 +648,7 @@ void Battle::rewardPhase() {
         UI::boxLeft(nameStr, W);
 
         // Card description
-        UI::boxLeft(offers[i].getDescription(), W);
+        UI::boxLeftTrunc(offers[i].getDescription(), W);
         UI::boxDiv(W);
 
         UI::boxLeft("[r] 덱의 카드와 교체", W);
@@ -643,10 +662,23 @@ void Battle::rewardPhase() {
 
         if (ch == 'r') {
             std::cout << "\n";
-            pool.print();
+            UI::boxTop(W);
+            UI::boxLeft("  현재 덱  (" + std::to_string(pool.size()) + "장)", W);
+            UI::boxDiv(W);
+            for (int di = 0; di < pool.size(); ++di) {
+                Card dc; pool.getCard(di, dc);
+                std::string tTag = (dc.getTrack() == Track::None)
+                    ? "[공용]" : "[" + trackToString(dc.getTrack()) + "]";
+                std::ostringstream drow;
+                drow << std::right << std::setw(2) << di << ".  "
+                     << std::left << std::setw(16) << dc.getName()
+                     << "  " << tTag;
+                UI::boxLeft(drow.str(), W);
+            }
+            UI::boxBot(W);
             std::cout << "\n  교체할 카드 번호 > ";
             std::getline(std::cin, line);
-            int idx = (line.empty() || !(line[0] >= '0' && line[0] <= '9')) ? -1 : std::stoi(line);
+            int idx = safeInt(line, -1);
             Card old;
             if (idx < 0 || !pool.getCard(idx, old)) {
                 std::cout << "  잘못된 번호 -- 건너뜁니다.\n";
@@ -707,11 +739,20 @@ bool Battle::run() {
 
 bool        Battle::isPlayerWon() const { return playerWon; }
 
+int Battle::pickLivePartyTarget() const {
+    std::cout << "  대상 캐릭터 번호 > ";
+    std::string line;
+    std::getline(std::cin, line);
+    int ti = safeInt(line, -1);
+    if (ti < 0 || ti >= partySize || !party[ti]->isAlive()) ti = frontPartyIndex();
+    return ti;
+}
+
 BattleStats Battle::getStats() const {
     BattleStats s;
     if (enemyCount > 0) {
         s.label  = enemies[0].getName();
-        s.isBoss = enemies[0].getMaxHP() > 200;
+        s.isBoss = enemies[0].isBoss();
     }
     s.damageDealt = totalDamageDealt;
     s.damageTaken = totalDamageTaken;

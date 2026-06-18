@@ -1,6 +1,8 @@
 #include "map/DungeonGraph.h"
 #include "core/Direction.h"
+#include "core/UI.h"
 #include <iostream>
+#include <string>
 
 DungeonGraph::DungeonGraph() : roomCount(0) {
     for (int i = 0; i < MAX_ROOMS; ++i)
@@ -61,26 +63,44 @@ void DungeonGraph::dfs(int startId, bool visitedOut[MAX_ROOMS]) const {
     }
 }
 
+static std::string dirKor(Direction d) {
+    switch (d) {
+        case Direction::North: return "위 ";
+        case Direction::South: return "아래";
+        case Direction::East:  return "오른";
+        case Direction::West:  return "왼 ";
+        default:               return "?  ";
+    }
+}
+
 void DungeonGraph::printMap() const {
-    if (roomCount == 0) { std::cout << "(맵 없음)\n"; return; }
+    static const int W = 60;
+    if (roomCount == 0) { std::cout << "  (맵 없음)\n"; return; }
 
     bool visited[MAX_ROOMS];
     dfs(0, visited);
 
-    std::cout << "=== 던전 맵 ===\n";
+    std::cout << "\n";
+    UI::boxTop(W);
+    UI::boxCenter("던전 그래프  |  DFS 탐색 결과", W);
+    UI::boxDiv(W);
+
     for (int id = 0; id < roomCount; ++id) {
         if (!visited[id]) continue;
         const Room* r = getRoom(id);
-        std::cout << "  [" << id << "] " << r->getName();
-        if (r->hasBeenVisited()) std::cout << " *";
-        std::cout << "\n";
+        std::string hdr = "[" + std::to_string(id) + "]  " + r->getName();
+        if (r->hasBeenVisited()) hdr += "  ★";
+        UI::boxLeft(hdr, W);
         for (int d = 0; d < 4; ++d) {
-            int neighbor = adjacency[id][d];
-            if (neighbor == -1) continue;
+            int nb = adjacency[id][d];
+            if (nb == -1) continue;
             Direction dir = static_cast<Direction>(d);
-            std::cout << "       " << directionToString(dir)
-                      << " -> [" << neighbor << "] "
-                      << getRoom(neighbor)->getName() << "\n";
+            UI::boxLeft("      " + dirKor(dir) + " -> ["
+                        + std::to_string(nb) + "]  "
+                        + getRoom(nb)->getName(), W);
         }
     }
+
+    UI::boxBot(W);
+    std::cout << "\n";
 }

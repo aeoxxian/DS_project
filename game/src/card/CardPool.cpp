@@ -18,10 +18,9 @@ void CardPool::clear()         { cards.clear(); }
 
 int CardPool::countByTrack(Track t) const {
     int n = 0;
-    auto* node = cards.getHead();
-    while (node) {
-        if (node->value.getTrack() == t) ++n;
-        node = node->next;
+    for (int i = 0; i < cards.size(); ++i) {
+        Card c;
+        if (cards.getAt(i, c) && c.getTrack() == t) ++n;
     }
     return n;
 }
@@ -34,17 +33,15 @@ bool CardPool::canAddCard(const Card& c) const {
 
 void CardPool::print() const {
     std::cout << "  덱 (" << cards.size() << "장):\n";
-    auto* node = cards.getHead();
-    int i = 0;
-    while (node) {
-        const Card& c = node->value;
+    for (int i = 0; i < cards.size(); ++i) {
+        Card c;
+        if (!cards.getAt(i, c)) continue;
         std::string trackStr = (c.getTrack() == Track::None)
                                ? "[공용]"
                                : "[" + trackToString(c.getTrack()) + "]";
-        std::cout << "  " << i++ << ". " << c.getName()
+        std::cout << "  " << i << ". " << c.getName()
                   << "  " << trackStr
                   << "  " << c.getDescription() << "\n";
-        node = node->next;
     }
 }
 

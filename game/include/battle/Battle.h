@@ -55,6 +55,7 @@ private:
     bool checkBattleEnd();
     int  firstLivingEnemy() const;
     int  livingPartyCount() const;
+    int  pickLivePartyTarget() const;   // 포션 대상 캐릭터 선택 공통 헬퍼
 
 public:
     Battle(BattleCharacter party[], int partySize, CardPool& pool,

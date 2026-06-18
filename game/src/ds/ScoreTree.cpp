@@ -1,4 +1,7 @@
 #include "ds/ScoreTree.h"
+#include "core/UI.h"
+#include <sstream>
+#include <iomanip>
 
 ScoreTree::Node* ScoreTree::copyTree(const Node* node) const {
     if (!node) return nullptr;
@@ -32,7 +35,10 @@ void ScoreTree::printDescending() const {
 void ScoreTree::printDesc(Node* node, int& rank) const {
     if (!node) return;
     printDesc(node->right, rank);
-    std::cout << "  " << rank++ << ". " << node->record.name
-              << "  (효율 점수: " << node->record.score << ")\n";
+    std::ostringstream row;
+    row << std::right << std::setw(2) << rank++ << ".  "
+        << std::left  << std::setw(24) << node->record.name
+        << "효율 점수: " << node->record.score;
+    UI::boxLeft(row.str(), 58);
     printDesc(node->left, rank);
 }
