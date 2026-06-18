@@ -31,18 +31,20 @@ There is no test suite; "smoke test" in the docs means a clean `make` with no wa
 | Sequence / shared deck | `ds/LinkedList.h` | CardPool, Hand, Inventory |
 | LIFO / undo / DFS | `ds/Stack.h` | RunMap move-undo, Battle assign-undo, DungeonGraph DFS |
 | FIFO / cyclic intent | `ds/Queue.h` | `Enemy` intent pattern (`Queue<Card>`) |
-| Indexed list | `ds/DynamicArray.h` | items/enemies inside a `Room` |
+| Indexed list | `ds/DynamicArray.h` | items/enemies inside a `Room`; deck-preset slots in `DeckSave` |
 | Ranking | `ds/ScoreTree.h` (+ `src/ds/ScoreTree.cpp`) | battle-efficiency BST, duplicates inserted right |
 | Sorting | `ds/Sorting.h` (+ `src/ds/Sorting.cpp`) | run-end stats (selection + insertion sort) |
 | Room graph | `map/DungeonGraph.h` (+ `.cpp`) | 4-direction adjacency, DFS |
 
 ## Architecture
 
-Flow: `main.cpp` → `registerAll()` (loads all content into global registries) → `Game::run()` (one full run).
+Flow: `main.cpp` → `registerAll()` (loads all content into global registries) → title screen → `Game::run()`. `main` wraps the run in a retry loop (`do { Game game(retry); retry = game.run(); } while (retry)`), so `Game(bool isRetry)` and the `bool` return of `run()` carry the "play again" decision between runs.
 
 - **Registry-driven content.** All game content is declared in `src/registry/` and loaded once at startup via `registerAll()` (`include/registry/Registries.h`): cards (`CardRegistry`), playable characters (`CharacterRoster`), monsters (`MonsterRegistry`), events (`EventRegistry`). **To add/tune content, edit the registry `.cpp` — not the engine classes.** `md/README.md` documents the exact factory-call patterns (`Effects::attack(...)`, `addCardByName(...)`, `EventChoice::addOutcome(...)`, etc.).
 
-- **`Game` (`run/Game.h`)** owns a run: a `party[]` of `BattleCharacter`, the shared `CardPool`, the `RunMap`, `Inventory`, gold, and the `ScoreTree`/`BattleStats` log. It walks the map and dispatches each room to `handleBattle` / `handleEvent` / `handleShop` / `handleRest`, then `printRunSummary()` at the end.
+- **`Game` (`run/Game.h`)** owns a run: a `party[]` of `BattleCharacter`, the shared `CardPool`, the `RunMap`, `Inventory`, and the `ScoreTree`/`BattleStats` log. It walks the map and dispatches each room to `handleBattle` / `handleEvent` / `handleShop` / `handleRest`, then `printRunSummary()` at the end. (The gold system was removed — `handleShop` is a free-supply event and the `GainGold`/`LoseGold` outcomes are now no-ops; don't reintroduce a `gold` member.)
+
+- **Persistence (`save/`).** Two cross-run save files live in `game/save/`. `UnlockSave` (`save/unlocks.dat`) tracks which cards the player has ever unlocked — newly drafted cards persist so they can be picked from an unlocked-card deck on later runs. `DeckSave` (`save/decks.dat`) stores named party+deck presets in a `DynamicArray<DeckPreset>`. Both are owned by `Game`, loaded at construction, and surfaced through `showTitleScreen()` (default deck / unlocked deck / load preset). Saves are plain text keyed by card/character **name** — renaming registry content silently invalidates existing saves.
 
 - **Combat (`battle/Battle.cpp`)** is card-assignment based: each turn draws a 5-card hand, the player assigns one card per character (or uses `switch` to swap formation positions instead of acting). Player and enemy cards run through one shared `resolveCard()`; `applyEffect()` branches friend/foe on `sourceIsPlayer`. Assignments are undoable via a `Stack<AssignRecord>`. Only the `★전열` (front-row) character takes enemy hits.
 
