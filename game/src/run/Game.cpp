@@ -124,8 +124,7 @@ int Game::showTitleScreen() {
 
         // 프리셋 삭제
         if (line.size() >= 3 && line.substr(0, 2) == "d ") {
-            int di = -1;
-            try { di = std::stoi(line.substr(2)) - 1; } catch (...) {}
+            int di = safeInt(line.substr(2), 0) - 1;
             if (di >= 0 && di < deckSave.size()) {
                 std::string dname = deckSave.getAt(di).name;
                 deckSave.removeAt(di);
@@ -140,9 +139,7 @@ int Game::showTitleScreen() {
         }
 
         // 프리셋 번호 선택 (1-indexed 표시, 0-indexed 저장)
-        int si = -1;
-        if (!line.empty() && line[0] >= '1' && line[0] <= '9')
-            try { si = std::stoi(line) - 1; } catch (...) {}
+        int si = safeInt(line, 0) - 1;
         if (si < 0 || si >= deckSave.size()) { std::cout << "  잘못된 입력.\n"; continue; }
 
         if (tryLoadPreset(si)) return 2;
@@ -1173,6 +1170,12 @@ bool Game::run() {
                 std::cout << "  이전 방으로 돌아갔습니다.\n";
             else
                 std::cout << "  취소할 이동이 없습니다.\n";
+            UI::pause();
+            continue;
+        }
+
+        if (cmd.size() > 5 && cmd.substr(0, 5) == "save ") {
+            saveDeckPreset(cmd.substr(5));
             UI::pause();
             continue;
         }

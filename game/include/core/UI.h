@@ -217,12 +217,13 @@ inline void printHelp() {
     boxMid(HW);
     boxCenter("맵 이동", HW);
     boxDiv(HW);
-    boxLeft("w/a/s/d      방향 이동", HW);
-    boxLeft("u / undo     마지막 이동 취소", HW);
-    boxLeft("l / look     맵 + 파티 상태 새로고침", HW);
-    boxLeft("g / graph    던전 그래프 (DFS)", HW);
-    boxLeft("i / inv      인벤토리 확인", HW);
-    boxLeft("h / help     도움말", HW);
+    boxLeft("w/a/s/d          방향 이동", HW);
+    boxLeft("u / undo         마지막 이동 취소", HW);
+    boxLeft("l / look         맵 + 파티 상태 새로고침", HW);
+    boxLeft("g / graph        던전 그래프 (DFS)", HW);
+    boxLeft("i / inv          인벤토리 확인", HW);
+    boxLeft("save <이름>      현재 덱·파티 구성 저장", HW);
+    boxLeft("h / help         도움말", HW);
 
     boxMid(HW);
     boxCenter("전투  ─  카드 배정", HW);
