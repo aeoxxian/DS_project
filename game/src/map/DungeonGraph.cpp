@@ -74,7 +74,7 @@ static std::string dirKor(Direction d) {
 }
 
 void DungeonGraph::printMap() const {
-    static const int W = 60;
+    static const int W = 58;
     if (roomCount == 0) { std::cout << "  (맵 없음)\n"; return; }
 
     bool visited[MAX_ROOMS];

@@ -664,17 +664,6 @@ void Game::selectStartingDeck() {
     }
 }
 
-void Game::buildPool() {
-    CardRegistry& reg = CardRegistry::instance();
-    for (int i = 0; i < reg.size(); ++i) {
-        Card c;
-        if (!reg.getAt(i, c)) continue;
-        if (c.getTrack() == Track::None) { pool.addCard(c); continue; }
-        for (int p = 0; p < MAX_CHARACTERS; ++p)
-            if (party[p].hasTrack(c.getTrack())) { pool.addCard(c); break; }
-    }
-}
-
 void Game::handleBattle(bool isBoss) {
     MonsterRegistry& reg = MonsterRegistry::instance();
     if (reg.size() == 0) {
@@ -943,7 +932,7 @@ static void printPartyStatus(BattleCharacter party[], int count) {
             + " 방" + std::to_string(party[i].getDefend());
         std::string st = party[i].getStatus().toString();
         if (!st.empty()) row += "  " + st;
-        UI::boxLeft(row, W);
+        UI::boxLeftTrunc(row, W);
     }
     UI::boxBot(W);
     std::cout << "\n";

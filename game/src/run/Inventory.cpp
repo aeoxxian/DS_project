@@ -1,4 +1,5 @@
 #include "run/Inventory.h"
+#include "ds/Sorting.h"
 #include "core/UI.h"
 #include <iostream>
 
@@ -47,20 +48,26 @@ void Inventory::print() const {
         return;
     }
 
-    // 정렬 시 원본 LinkedList 인덱스를 함께 추적 (선택 정렬)
+    // sortItemsByValueDescending(Sorting.h)으로 정렬; 원본 LinkedList 인덱스를 병행 복원
     Item* arr     = new Item[n];
     int*  origIdx = new int[n];
     for (int i = 0; i < n; ++i) {
         items.getAt(i, arr[i]);
         origIdx[i] = i;
     }
-    for (int i = 0; i < n - 1; ++i) {
-        int maxJ = i;
-        for (int j = i + 1; j < n; ++j)
-            if (arr[j].getValue() > arr[maxJ].getValue()) maxJ = j;
-        if (maxJ != i) {
-            Item tmp = arr[i]; arr[i] = arr[maxJ]; arr[maxJ] = tmp;
-            int  ti  = origIdx[i]; origIdx[i] = origIdx[maxJ]; origIdx[maxJ] = ti;
+    sortItemsByValueDescending(arr, n);   // ds/Sorting.h 선택 정렬
+    // 정렬 후 각 위치의 원본 인덱스 복원 (중복 이름·값 처리)
+    bool used[MAX_POTIONS] = {};
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            if (!used[j]) {
+                Item it; items.getAt(j, it);
+                if (it.getName() == arr[i].getName() && it.getValue() == arr[i].getValue()) {
+                    origIdx[i] = j;
+                    used[j]    = true;
+                    break;
+                }
+            }
         }
     }
 

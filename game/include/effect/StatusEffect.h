@@ -32,12 +32,9 @@ struct ActiveStatus {
 };
 
 struct StatusResult {
-    bool canAct;
-    bool attacksSelf;
-    int  poisonDamage;
-    int  healReduction;
+    int poisonDamage;
 
-    StatusResult() : canAct(true), attacksSelf(false), poisonDamage(0), healReduction(0) {}
+    StatusResult() : poisonDamage(0) {}
 };
 
 class StatusTracker {
@@ -52,7 +49,6 @@ public:
     int  getModifier(const std::string& stat) const;
     bool has(const std::string& stat) const;
     bool isStunned() const;
-    void removeDebuffs(int n);
     void clear();
     void tick();
     void        print()    const;

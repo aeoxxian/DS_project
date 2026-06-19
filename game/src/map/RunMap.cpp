@@ -81,8 +81,10 @@ RunMap::RunMap() : cur(0, 0, 0) {
         for (int r = 0; r < MAP_ROWS; ++r)
             for (int c = 0; c < MAP_COLS; ++c)
                 cleared[f][r][c] = false;
-    cleared[0][0][0] = true;  // 1층 시작방은 방문 처리
     buildGraph();
+    cleared[0][0][0] = true;  // 1층 시작방 방문 처리
+    Room* startRoom = graph.getRoom(roomId(0, 0, 0));
+    if (startRoom) startRoom->setVisited(true);
 }
 
 // ── 이동 ─────────────────────────────────────────────────────────────────────
@@ -127,7 +129,11 @@ RoomType RunMap::currentType()  const { return LAYOUT[cur.floor][cur.row][cur.co
 bool     RunMap::isAtBoss()     const { return currentType() == RoomType::Boss; }
 bool     RunMap::isAtStairs()   const { return currentType() == RoomType::Stairs; }
 bool     RunMap::isCleared()    const { return cleared[cur.floor][cur.row][cur.col]; }
-void     RunMap::clearCurrent()       { cleared[cur.floor][cur.row][cur.col] = true; }
+void     RunMap::clearCurrent() {
+    cleared[cur.floor][cur.row][cur.col] = true;
+    Room* r = graph.getRoom(roomId(cur.floor, cur.row, cur.col));
+    if (r) r->setVisited(true);
+}
 
 // ── 출력 ─────────────────────────────────────────────────────────────────────
 

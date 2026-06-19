@@ -12,14 +12,16 @@ bool DeckSave::load() {
     while (std::getline(f, line)) {
         if (line.size() >= 5 && line.substr(0, 5) == "DECK ") {
             DeckPreset p(line.substr(5));
-            while (std::getline(f, line) && line != "END") {
+            bool foundEnd = false;
+            while (std::getline(f, line)) {
+                if (line == "END") { foundEnd = true; break; }
                 if (line.empty()) continue;
                 if (line.size() >= 5 && line.substr(0, 5) == "CHAR ")
                     p.addChar(line.substr(5));
                 else
                     p.addCard(line);
             }
-            slots.pushBack(p);
+            if (foundEnd) slots.pushBack(p);
         }
     }
     return slots.size() > 0;

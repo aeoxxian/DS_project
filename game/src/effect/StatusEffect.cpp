@@ -42,25 +42,6 @@ bool StatusTracker::has(const std::string& stat) const {
 
 bool StatusTracker::isStunned() const { return has("stun"); }
 
-void StatusTracker::removeDebuffs(int n) {
-    static const char* debuffs[] = {
-        "weaken","vulnerable","atk_down","mag_down","def_down",
-        "burn","confuse","stun"
-    };
-    int removed = 0;
-    for (int attempt = 0; attempt < count * 3 && removed < n; ++attempt) {
-        if (count == 0) break;
-        int idx = rand() % count;
-        for (int d = 0; d < 7; ++d) {
-            if (statuses[idx].stat == debuffs[d]) {
-                for (int j = idx; j < count - 1; ++j) statuses[j] = statuses[j+1];
-                --count; ++removed; break;
-            }
-        }
-    }
-    if (removed > 0) std::cout << "  (" << removed << "개 디버프 제거)\n";
-}
-
 void StatusTracker::clear() { count = 0; }
 
 void StatusTracker::tick() {
@@ -93,15 +74,11 @@ void StatusTracker::print() const {
 StatusResult StatusTracker::processTurn(const std::string& name) {
     StatusResult result;
 
-    if (has("stun")) {
+    if (has("stun"))
         std::cout << "  " << name << " 기절 상태!\n";
-        result.canAct = false;
-    }
 
-    if (result.canAct && has("confuse") && rand() % 100 < CONFUSE_CHANCE) {
+    if (!has("stun") && has("confuse") && rand() % 100 < CONFUSE_CHANCE)
         std::cout << "  " << name << " 혼란 상태!\n";
-        result.attacksSelf = true;
-    }
 
     for (int i = 0; i < count; ++i) {
         if (statuses[i].stat == "poison" && statuses[i].duration > 0)
@@ -110,10 +87,8 @@ StatusResult StatusTracker::processTurn(const std::string& name) {
     if (result.poisonDamage > 0)
         std::cout << "  " << name << " 독 데미지 -" << result.poisonDamage << "\n";
 
-    if (has("burn")) {
-        result.healReduction = 50;
+    if (has("burn"))
         std::cout << "  " << name << " 화상! (회복량 50% 감소)\n";
-    }
 
     return result;
 }

@@ -35,7 +35,6 @@ private:
     void selectParty();
     void selectStartingDeck();
     void buildDefaultStarterDeck();
-    void buildPool();
     void addCardAndUnlock(const Card& c);
     bool pickRandomValidCard(Card& out) const;
     void offerCardReplace(const Card& offered);
